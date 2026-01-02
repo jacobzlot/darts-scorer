@@ -6,21 +6,21 @@
       "cssClass": "",
       "opponents": [
         {
-          "name": "Practice Patty",
-          "average": 35,
+          "name": "Clumsy Cameron",
+          "average": 28,
+          "checkout": 12,
+          "image": null
+        },
+        {
+          "name": "Friendly Fallon",
+          "average": 37,
           "checkout": 15,
           "image": null
         },
         {
-          "name": "Casual Chris",
-          "average": 42,
-          "checkout": 22,
-          "image": null
-        },
-        {
-          "name": "Rookie Ray",
-          "average": 48,
-          "checkout": 28,
+          "name": "Learning Leonard",
+          "average": 47,
+          "checkout": 19,
           "image": null
         }
       ]
@@ -31,21 +31,21 @@
       "cssClass": "",
       "opponents": [
         {
-          "name": "Steady Steve",
+          "name": "Reliable Rock",
           "average": 58,
-          "checkout": 35,
+          "checkout": 23,
           "image": null
         },
         {
-          "name": "Accurate Amy",
-          "average": 65,
-          "checkout": 40,
+          "name": "Precise Peter",
+          "average": 64,
+          "checkout": 25,
           "image": null
         },
         {
-          "name": "Clubhouse Carl",
-          "average": 70,
-          "checkout": 42,
+          "name": "Brilliant Beau",
+          "average": 68,
+          "checkout": 27,
           "image": null
         }
       ]
@@ -56,21 +56,21 @@
       "cssClass": "",
       "opponents": [
         {
-          "name": "County Chris",
+          "name": "Notable Nathan",
+          "average": 74,
+          "checkout": 28,
+          "image": null
+        },
+        {
+          "name": "Premier Price",
           "average": 78,
-          "checkout": 44,
+          "checkout": 29,
           "image": null
         },
         {
-          "name": "Circuit Sarah",
-          "average": 82,
-          "checkout": 46,
-          "image": null
-        },
-        {
-          "name": "Qualifier Quinn",
-          "average": 85,
-          "checkout": 48,
+          "name": "Golden Gary",
+          "average": 83,
+          "checkout": 30,
           "image": null
         }
       ]
@@ -82,20 +82,20 @@
       "opponents": [
         {
           "name": "Damon Heta",
-          "average": 93,
-          "checkout": 38,
+          "average": 94.76,
+          "checkout": 43.84,
           "image": "player-heta.png"
         },
         {
           "name": "Michael van Gerwen",
-          "average": 96,
-          "checkout": 40,
+          "average": 97.08,
+          "checkout": 39.10,
           "image": "player-mvg.png"
         },
         {
           "name": "Luke Littler",
-          "average": 101,
-          "checkout": 42,
+          "average": 101.03,
+          "checkout": 43.42,
           "image": "player-littler.png"
         }
       ]
@@ -107,12 +107,13 @@
       "opponents": [
         {
           "name": "Phil Taylor",
-          "average": 105.2,
-          "checkout": 48,
+          "average": 105.05,
+          "checkout": 43.12,
           "image": "player-taylor.png",
           "subtitle": "The Power"
         }
       ]
     }
   ]
+
 }
