@@ -278,6 +278,11 @@ function playAITurn(){
   const checkoutPct = Engine.cfg.aiCheckout / 100;
   const remaining = Engine.state.p2Score;
   
+  // Calculate actual SCORING average (higher than overall leg average)
+  // The overall average includes poor checkout attempts which drag it down
+  // Someone with 28 avg and 12% checkout probably scores like 40-45 but misses lots of doubles
+  const scoringAverage = calculateScoringAverage(avg, checkoutPct);
+  
   let score;
   
   // Determine if AI is on a finish
@@ -295,18 +300,52 @@ function playAITurn(){
     if(Math.random() < adjustedCheckoutChance){
       score = remaining; // Successfully finish
     } else {
-      // Miss the checkout - play it safe and smart
-      score = simulateCheckoutAttempt(avg, remaining);
+      // Miss the checkout - use scoring average for setup shots
+      score = simulateCheckoutAttempt(scoringAverage, remaining);
     }
   } else {
-    // Not on a finish - normal scoring
-    score = simulateThreeDarts(avg, remaining, false);
+    // Not on a finish - use scoring average (NOT overall average)
+    score = simulateThreeDarts(scoringAverage, remaining, false);
   }
   
   Engine.apply(score);
   
   // Use requestAnimationFrame for smoother rendering
   requestAnimationFrame(() => render());
+}
+
+// Calculate actual scoring average from overall leg average and checkout %
+function calculateScoringAverage(overallAverage, checkoutPercentage) {
+  // The overall average includes checkout struggles
+  // Someone with low average but decent checkout % scores higher than their overall average
+  // Someone with low average AND low checkout % is genuinely poor at scoring too
+  
+  // Key insight: Poor checkouts cost you ~10-30 points per leg on average
+  // depending on how bad you are at finishing
+  
+  // Checkout penalty calculation:
+  // - 50%+ checkout: minimal penalty (~5 points)
+  // - 40-50% checkout: small penalty (~8 points)
+  // - 30-40% checkout: moderate penalty (~12 points)
+  // - 20-30% checkout: large penalty (~18 points)
+  // - 10-20% checkout: huge penalty (~25 points)
+  // - <10% checkout: massive penalty (~35 points)
+  
+  let checkoutPenalty;
+  if(checkoutPercentage >= 0.50) checkoutPenalty = 5;
+  else if(checkoutPercentage >= 0.40) checkoutPenalty = 8;
+  else if(checkoutPercentage >= 0.30) checkoutPenalty = 12;
+  else if(checkoutPercentage >= 0.20) checkoutPenalty = 18;
+  else if(checkoutPercentage >= 0.10) checkoutPenalty = 25;
+  else checkoutPenalty = 35;
+  
+  // Scoring average = overall average + checkout penalty
+  const scoringAvg = overallAverage + checkoutPenalty;
+  
+  // Cap at reasonable limits
+  // Even terrible finishers can't score above ~110 average
+  // Even with great finishing, minimum scoring average is the overall average
+  return Math.min(Math.max(scoringAvg, overallAverage), 110);
 }
 
 // Simulate a checkout attempt that misses
