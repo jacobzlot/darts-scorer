@@ -320,12 +320,24 @@ function initMatch(){
   
   // Update match info text
   let matchText = `${START} GAME`;
-  if(Engine.cfg.sets > 0){
-    matchText += ` — FIRST OF ${Engine.cfg.sets} SETS`;
+  if(Engine.cfg.sets > 1){
+    matchText += ` — FIRST TO ${Engine.cfg.sets} SETS`;
   }
-  matchText += ` — FIRST OF ${Engine.cfg.legs} LEGS`;
+  matchText += ` — FIRST TO ${Engine.cfg.legs} LEGS`;
   
   $("matchInfo").textContent = matchText;
+  
+  // Hide SETS display if only 1 set
+  if(Engine.cfg.sets === 1){
+    const centerStats = document.querySelector('.center-stats');
+    if(centerStats){
+      centerStats.classList.add('no-sets');
+      // Hide the middle two columns (SETS)
+      const setsElements = centerStats.querySelectorAll('div');
+      if(setsElements[1]) setsElements[1].style.display = 'none';
+      if(setsElements[2]) setsElements[2].style.display = 'none';
+    }
+  }
   
   render();
   $("throwInput").focus();
