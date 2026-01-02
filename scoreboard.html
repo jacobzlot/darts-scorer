@@ -135,7 +135,12 @@ const Engine = {
     p1Hist:[],p2Hist:[],
     p1Pts:0,p2Pts:0,
     p1Turns:0,p2Turns:0,
-    undo:[]
+    undo:[],
+    // Match-level cumulative stats
+    matchP1Pts:0,matchP2Pts:0,
+    matchP1Turns:0,matchP2Turns:0,
+    currentSetStarter:0, // Who started current set
+    matchOver:false
   },
 
   snapshot(){ return JSON.parse(JSON.stringify(this.state)); },
@@ -145,8 +150,11 @@ const Engine = {
     const s=this.state;
     s.p1Score=s.p2Score=START;
     s.turn=next;
-    s.p1Hist=[{type:"start",score:START}];
-    s.p2Hist=[{type:"start",score:START}];
+    // Limit history arrays to last 50 items for performance
+    if(s.p1Hist.length > 50) s.p1Hist = s.p1Hist.slice(-50);
+    if(s.p2Hist.length > 50) s.p2Hist = s.p2Hist.slice(-50);
+    s.p1Hist.push({type:"start",score:START});
+    s.p2Hist.push({type:"start",score:START});
     s.p1Pts=s.p2Pts=0;
     s.p1Turns=s.p2Turns=0;
   },
@@ -164,7 +172,13 @@ const Engine = {
     const cur=isP1?s.p1Score:s.p2Score;
     const hist=isP1?s.p1Hist:s.p2Hist;
 
-    if(isP1)s.p1Turns++; else s.p2Turns++;
+    if(isP1){
+      s.p1Turns++;
+      s.matchP1Turns++; // Track cumulative
+    } else {
+      s.p2Turns++;
+      s.matchP2Turns++; // Track cumulative
+    }
 
     const after=cur-score;
     if(after<0||after===1){
@@ -174,8 +188,16 @@ const Engine = {
     }
 
     hist.push({type:"turn",scored:score,to:after});
-    if(isP1){s.p1Score=after;s.p1Pts+=score;}
-    else{s.p2Score=after;s.p2Pts+=score;}
+    if(isP1){
+      s.p1Score=after;
+      s.p1Pts+=score;
+      s.matchP1Pts+=score; // Track cumulative
+    }
+    else{
+      s.p2Score=after;
+      s.p2Pts+=score;
+      s.matchP2Pts+=score; // Track cumulative
+    }
 
     if(after===0){
       hist.push({type:"finish"});
@@ -189,12 +211,26 @@ const Engine = {
     const s=this.state;
     if(w===0)s.p1Legs++; else s.p2Legs++;
 
+    // Check if set is won
     if(s.p1Legs===this.cfg.legs||s.p2Legs===this.cfg.legs){
       if(s.p1Legs===this.cfg.legs)s.p1Sets++;
       else s.p2Sets++;
+      
+      // Check if match is won
+      if(s.p1Sets===this.cfg.sets || s.p2Sets===this.cfg.sets){
+        s.matchOver = true;
+        showGameOver(s.p1Sets === this.cfg.sets ? 0 : 1);
+        return; // Don't reset leg - match is over
+      }
+      
+      // Set won but match continues - alternate throw for next set
+      s.currentSetStarter = s.currentSetStarter ^ 1;
       s.p1Legs=s.p2Legs=0;
+      this.resetLeg(s.currentSetStarter);
+    } else {
+      // Leg won but set continues - normal throw alternation
+      this.resetLeg(w^1);
     }
-    this.resetLeg(w^1);
   }
 };
 
@@ -248,11 +284,11 @@ function render(){
   renderHist("p1History",s.p1Hist);
   renderHist("p2History",s.p2Hist);
 
-  // Update averages
-  $("p1Avg3").textContent=s.p1Turns?(s.p1Pts/s.p1Turns).toFixed(2):"—";
-  $("p2Avg3").textContent=s.p2Turns?(s.p2Pts/s.p2Turns).toFixed(2):"—";
-  $("p1Avg1").textContent=s.p1Turns?(s.p1Pts/s.p1Turns/3).toFixed(2):"—";
-  $("p2Avg1").textContent=s.p2Turns?(s.p2Pts/s.p2Turns/3).toFixed(2):"—";
+  // Update averages using match-level cumulative stats
+  $("p1Avg3").textContent=s.matchP1Turns?(s.matchP1Pts/s.matchP1Turns).toFixed(2):"—";
+  $("p2Avg3").textContent=s.matchP2Turns?(s.matchP2Pts/s.matchP2Turns).toFixed(2):"—";
+  $("p1Avg1").textContent=s.matchP1Turns?(s.matchP1Pts/s.matchP1Turns/3).toFixed(2):"—";
+  $("p2Avg1").textContent=s.matchP2Turns?(s.matchP2Pts/s.matchP2Turns/3).toFixed(2):"—";
 }
 
 function initMatch(){
@@ -268,6 +304,14 @@ function initMatch(){
   
   // Set the starting score based on game type
   START = Engine.cfg.gameType || 501;
+  
+  // Initialize match state
+  Engine.state.currentSetStarter = 0; // Player 1 starts first set
+  Engine.state.matchP1Pts = 0;
+  Engine.state.matchP2Pts = 0;
+  Engine.state.matchP1Turns = 0;
+  Engine.state.matchP2Turns = 0;
+  Engine.state.matchOver = false;
   
   Engine.resetLeg(0);
   
@@ -299,12 +343,72 @@ function initMatch(){
   }
 }
 
+function showGameOver(winner){
+  const s = Engine.state;
+  const winnerName = winner === 0 ? Engine.cfg.p1 : Engine.cfg.p2;
+  const winnerSets = winner === 0 ? s.p1Sets : s.p2Sets;
+  const loserSets = winner === 0 ? s.p2Sets : s.p1Sets;
+  const winnerAvg = winner === 0 ? 
+    (s.matchP1Turns ? (s.matchP1Pts/s.matchP1Turns).toFixed(2) : "0.00") :
+    (s.matchP2Turns ? (s.matchP2Pts/s.matchP2Turns).toFixed(2) : "0.00");
+  
+  // Create game over modal
+  const modal = document.createElement('div');
+  modal.id = 'gameOverModal';
+  modal.className = 'game-over-modal';
+  modal.innerHTML = `
+    <div class="game-over-content">
+      <h1 class="game-over-title">GAME OVER</h1>
+      <div class="winner-banner">
+        <div class="winner-name">${winnerName}</div>
+        <div class="winner-subtitle">WINS THE MATCH!</div>
+      </div>
+      <div class="match-result">
+        <div class="result-sets">${winnerSets} - ${loserSets}</div>
+        <div class="result-label">SETS</div>
+      </div>
+      <div class="match-stats">
+        <div class="stat-item">
+          <div class="stat-label">Match Average</div>
+          <div class="stat-value">${winnerAvg}</div>
+        </div>
+      </div>
+      <div class="game-over-buttons">
+        <button onclick="location.href='gamesetup.html'" class="btn-new-match">NEW MATCH</button>
+        <button onclick="closeGameOver()" class="btn-review">REVIEW SCORES</button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  // Disable input
+  $("throwInput").disabled = true;
+  
+  // Focus on new match button
+  setTimeout(() => {
+    const newMatchBtn = modal.querySelector('.btn-new-match');
+    if(newMatchBtn) newMatchBtn.focus();
+  }, 100);
+}
+
+function closeGameOver(){
+  const modal = document.getElementById('gameOverModal');
+  if(modal) modal.remove();
+}
+
 function submitThrow(){
+  // Don't allow input if match is over
+  if(Engine.state.matchOver) return;
+  
   const v=+$("throwInput").value;
   $("throwInput").value="";
   if(v<0||v>180)return;
   Engine.apply(v);
   render();
+  
+  // Check if match ended
+  if(Engine.state.matchOver) return;
   
   // Check if it's AI's turn and game is still active
   if(Engine.cfg.isAI && Engine.state.turn === 1 && Engine.state.p2Score > 0){
@@ -363,38 +467,40 @@ function playAITurn(){
   requestAnimationFrame(() => render());
 }
 
-// Calculate actual scoring average from overall leg average and checkout %
+// Calculate actual SCORING average from overall leg average and checkout %
 function calculateScoringAverage(overallAverage, checkoutPercentage) {
   // The overall average includes checkout struggles
-  // Someone with low average but decent checkout % scores higher than their overall average
-  // Someone with low average AND low checkout % is genuinely poor at scoring too
+  // We need to reverse-engineer the scoring average
   
-  // Key insight: Poor checkouts cost you ~10-30 points per leg on average
-  // depending on how bad you are at finishing
+  // Key insight: Missed doubles waste darts, dragging down overall average
+  // Formula based on: Total points / (Scoring darts + Wasted checkout darts) = Overall avg
   
-  // Checkout penalty calculation:
-  // - 50%+ checkout: minimal penalty (~5 points)
-  // - 40-50% checkout: small penalty (~8 points)
-  // - 30-40% checkout: moderate penalty (~12 points)
-  // - 20-30% checkout: large penalty (~18 points)
-  // - 10-20% checkout: huge penalty (~25 points)
-  // - <10% checkout: massive penalty (~35 points)
+  // Checkout penalty (wasted darts per leg):
+  // Better finishers waste fewer darts on checkouts
+  let wastedDarts;
+  if(checkoutPercentage >= 0.48) wastedDarts = 6;   // Elite: ~6 wasted darts
+  else if(checkoutPercentage >= 0.42) wastedDarts = 9;   // Pro: ~9 wasted darts  
+  else if(checkoutPercentage >= 0.35) wastedDarts = 12;  // Good: ~12 wasted darts
+  else if(checkoutPercentage >= 0.28) wastedDarts = 15;  // Decent: ~15 wasted darts
+  else if(checkoutPercentage >= 0.20) wastedDarts = 20;  // Poor: ~20 wasted darts
+  else if(checkoutPercentage >= 0.15) wastedDarts = 30;  // Bad: ~30 wasted darts
+  else wastedDarts = 40; // Terrible: ~40 wasted darts
   
-  let checkoutPenalty;
-  if(checkoutPercentage >= 0.50) checkoutPenalty = 5;
-  else if(checkoutPercentage >= 0.40) checkoutPenalty = 8;
-  else if(checkoutPercentage >= 0.30) checkoutPenalty = 12;
-  else if(checkoutPercentage >= 0.20) checkoutPenalty = 18;
-  else if(checkoutPercentage >= 0.10) checkoutPenalty = 25;
-  else checkoutPenalty = 35;
+  // Reverse calculation:
+  // overallAvg = 501 / totalDarts * 3
+  // totalDarts = scoringDarts + wastedDarts
+  // scoringDarts = 501 / scoringAvg * 3
+  // So: overallAvg = 501 / ((501 / scoringAvg * 3) + wastedDarts) * 3
+  // Solving for scoringAvg: scoringAvg = 501 * 3 / (501 * 3 / overallAvg - wastedDarts)
   
-  // Scoring average = overall average + checkout penalty
-  const scoringAvg = overallAverage + checkoutPenalty;
+  const scoringAvg = (501 * 3) / ((501 * 3 / overallAverage) - wastedDarts);
   
-  // Cap at reasonable limits
-  // Even terrible finishers can't score above ~110 average
-  // Even with great finishing, minimum scoring average is the overall average
-  return Math.min(Math.max(scoringAvg, overallAverage), 110);
+  // Sanity checks
+  if(scoringAvg < overallAverage) return overallAverage + 5; // Minimum boost
+  if(scoringAvg > 110) return 110; // Cap at elite level
+  if(isNaN(scoringAvg) || scoringAvg < 0) return overallAverage + 10;
+  
+  return scoringAvg;
 }
 
 // Simulate a checkout attempt that misses
