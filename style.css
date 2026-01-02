@@ -695,6 +695,11 @@ body{
   text-align:center;
 }
 
+/* When sets are hidden (only 1 set match) */
+.center-stats.no-sets{
+  grid-template-columns:repeat(2,1fr);
+}
+
 .center-stats div{
   display:flex;
   flex-direction:column;
