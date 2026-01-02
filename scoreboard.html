@@ -443,11 +443,6 @@ function playAITurn(){
   const checkoutPct = Engine.cfg.aiCheckout / 100;
   const remaining = Engine.state.p2Score;
   
-  // Calculate actual SCORING average (higher than overall leg average)
-  // The overall average includes poor checkout attempts which drag it down
-  // Someone with 28 avg and 12% checkout probably scores like 40-45 but misses lots of doubles
-  const scoringAverage = calculateScoringAverage(avg, checkoutPct);
-  
   let score;
   
   // Determine if AI is on a finish
@@ -465,12 +460,13 @@ function playAITurn(){
     if(Math.random() < adjustedCheckoutChance){
       score = remaining; // Successfully finish
     } else {
-      // Miss the checkout - use scoring average for setup shots
-      score = simulateCheckoutAttempt(scoringAverage, remaining);
+      // Miss the checkout - use OVERALL average (not inflated)
+      score = simulateCheckoutAttempt(avg, remaining);
     }
   } else {
-    // Not on a finish - use scoring average (NOT overall average)
-    score = simulateThreeDarts(scoringAverage, remaining, false);
+    // Not on a finish - use OVERALL average directly
+    // The average already accounts for everything including poor checkouts
+    score = simulateThreeDarts(avg, remaining, false);
   }
   
   Engine.apply(score);
@@ -480,41 +476,6 @@ function playAITurn(){
 }
 
 // Calculate actual SCORING average from overall leg average and checkout %
-function calculateScoringAverage(overallAverage, checkoutPercentage) {
-  // The overall average includes checkout struggles
-  // We need to reverse-engineer the scoring average
-  
-  // Key insight: Missed doubles waste darts, dragging down overall average
-  // Formula based on: Total points / (Scoring darts + Wasted checkout darts) = Overall avg
-  
-  // Checkout penalty (wasted darts per leg):
-  // Better finishers waste fewer darts on checkouts
-  let wastedDarts;
-  if(checkoutPercentage >= 0.48) wastedDarts = 6;   // Elite: ~6 wasted darts
-  else if(checkoutPercentage >= 0.42) wastedDarts = 9;   // Pro: ~9 wasted darts  
-  else if(checkoutPercentage >= 0.35) wastedDarts = 12;  // Good: ~12 wasted darts
-  else if(checkoutPercentage >= 0.28) wastedDarts = 15;  // Decent: ~15 wasted darts
-  else if(checkoutPercentage >= 0.20) wastedDarts = 20;  // Poor: ~20 wasted darts
-  else if(checkoutPercentage >= 0.15) wastedDarts = 30;  // Bad: ~30 wasted darts
-  else wastedDarts = 40; // Terrible: ~40 wasted darts
-  
-  // Reverse calculation:
-  // overallAvg = 501 / totalDarts * 3
-  // totalDarts = scoringDarts + wastedDarts
-  // scoringDarts = 501 / scoringAvg * 3
-  // So: overallAvg = 501 / ((501 / scoringAvg * 3) + wastedDarts) * 3
-  // Solving for scoringAvg: scoringAvg = 501 * 3 / (501 * 3 / overallAvg - wastedDarts)
-  
-  const scoringAvg = (501 * 3) / ((501 * 3 / overallAverage) - wastedDarts);
-  
-  // Sanity checks
-  if(scoringAvg < overallAverage) return overallAverage + 5; // Minimum boost
-  if(scoringAvg > 110) return 110; // Cap at elite level
-  if(isNaN(scoringAvg) || scoringAvg < 0) return overallAverage + 10;
-  
-  return scoringAvg;
-}
-
 // Simulate a checkout attempt that misses
 function simulateCheckoutAttempt(average, remaining){
   // Professionals play SAFE on checkouts - they won't bust from standard finishes
@@ -626,55 +587,78 @@ function getTrebleRate(average){
 
 // Simulate throwing 3 darts based on skill level
 function simulateThreeDarts(average, remaining, isCheckoutAttempt){
-  // Calculate treble hit percentage based on ACTUAL PDC statistics
-  const trebleHitRate = getTrebleRate(average);
-  
   let totalScore = 0;
   
-  // Throw 3 darts
+  // Throw 3 darts with realistic scoring distribution
   for(let i = 0; i < 3; i++){
-    const dartScore = throwSingleDart(trebleHitRate, average, false, 0, i);
-    totalScore += dartScore;
+    totalScore += throwSingleDart(average);
   }
   
   return totalScore;
 }
 
-// Simulate a single dart throw
-function throwSingleDart(trebleHitRate, average, isCheckout, remainingInTurn, dartNumber){
-  // Regular scoring dart - aim for T20
-  const hitTreble = Math.random() < trebleHitRate;
+// Simulate a single dart throw based on average
+function throwSingleDart(average){
+  // Use average to determine scoring distribution
+  // Lower average = more misses and low scores
   
-  if(hitTreble){
-    // Hit a treble - mostly T20, sometimes T19 or T18
-    const trebleChoice = Math.random();
-    if(trebleChoice < 0.75) return 60;      // T20 - most common
-    else if(trebleChoice < 0.90) return 57; // T19
-    else if(trebleChoice < 0.97) return 54; // T18
-    else return 51;                          // T17
-  } else {
-    // Missed treble - where did we land?
-    const missType = Math.random();
-    
-    if(missType < 0.40){
-      // Hit single of target number (S20, S19, S18)
-      const singleChoice = Math.random();
-      if(singleChoice < 0.65) return 20;      // S20
-      else if(singleChoice < 0.85) return 19; // S19
-      else return 18;                         // S18
-    } else if(missType < 0.70){
-      // Hit adjacent single (S5, S1 near T20)
-      const adjacentChoice = Math.random();
-      if(adjacentChoice < 0.5) return 5;  // S5 (left of 20)
-      else return 1;                       // S1 (right of 20)
-    } else if(missType < 0.85){
-      // Hit single 20 bed but outer ring
-      return 20;
-    } else {
-      // Complete miss - random low score
-      return Math.floor(Math.random() * 15) + 1;
-    }
+  if(average >= 100){
+    // Elite players: frequent trebles, rare misses
+    const rand = Math.random();
+    if(rand < 0.43) return 60; // T20
+    if(rand < 0.50) return [57, 54, 51][Math.floor(Math.random() * 3)]; // Other trebles
+    if(rand < 0.85) return [20, 19, 18][Math.floor(Math.random() * 3)]; // High singles
+    if(rand < 0.95) return [15, 16, 17][Math.floor(Math.random() * 3)]; // Mid singles
+    return [5, 1, 12, 9][Math.floor(Math.random() * 4)]; // Misses
   }
+  
+  if(average >= 85){
+    // Professional: good trebles, occasional misses
+    const rand = Math.random();
+    if(rand < 0.36) return 60; // T20
+    if(rand < 0.42) return [57, 54, 51][Math.floor(Math.random() * 3)]; // Other trebles
+    if(rand < 0.70) return [20, 19, 18][Math.floor(Math.random() * 3)]; // High singles
+    if(rand < 0.88) return [15, 16, 17, 12, 13, 14][Math.floor(Math.random() * 6)]; // Mid singles
+    return [5, 1, 9, 11, 7, 3][Math.floor(Math.random() * 6)]; // Misses
+  }
+  
+  if(average >= 70){
+    // Solid player: some trebles, regular misses
+    const rand = Math.random();
+    if(rand < 0.30) return 60; // T20
+    if(rand < 0.35) return [57, 54, 51][Math.floor(Math.random() * 3)]; // Other trebles
+    if(rand < 0.60) return [20, 19, 18][Math.floor(Math.random() * 3)]; // High singles
+    if(rand < 0.80) return [15, 16, 17, 12, 13, 14][Math.floor(Math.random() * 6)]; // Mid singles
+    return [5, 1, 9, 11, 7, 3, 8, 10, 6][Math.floor(Math.random() * 9)]; // Misses
+  }
+  
+  if(average >= 55){
+    // Intermediate: occasional trebles, many misses
+    const rand = Math.random();
+    if(rand < 0.22) return 60; // T20
+    if(rand < 0.26) return [57, 54, 51, 48][Math.floor(Math.random() * 4)]; // Other trebles
+    if(rand < 0.46) return [20, 19, 18, 17][Math.floor(Math.random() * 4)]; // High singles
+    if(rand < 0.68) return [15, 16, 13, 14, 12, 11][Math.floor(Math.random() * 6)]; // Mid singles
+    return [5, 1, 9, 7, 3, 8, 10, 6, 4, 2][Math.floor(Math.random() * 10)]; // Misses
+  }
+  
+  if(average >= 40){
+    // Beginner: rare trebles, lots of low scores
+    const rand = Math.random();
+    if(rand < 0.14) return 60; // T20 - rare!
+    if(rand < 0.17) return [57, 54, 51][Math.floor(Math.random() * 3)]; // Other trebles - very rare
+    if(rand < 0.32) return [20, 19, 18][Math.floor(Math.random() * 3)]; // High singles
+    if(rand < 0.52) return [15, 16, 13, 14, 12, 11, 10][Math.floor(Math.random() * 7)]; // Mid singles
+    return [5, 1, 9, 7, 3, 8, 6, 4, 2, 17][Math.floor(Math.random() * 10)]; // Low scores
+  }
+  
+  // Very low average (< 40): almost never hit trebles, mostly low scores
+  const rand = Math.random();
+  if(rand < 0.07) return 60; // T20 - extremely rare!
+  if(rand < 0.09) return [57, 54, 51, 48][Math.floor(Math.random() * 4)]; // Other trebles
+  if(rand < 0.20) return [20, 19, 18][Math.floor(Math.random() * 3)]; // High singles
+  if(rand < 0.40) return [15, 16, 13, 14, 12, 11, 10, 9][Math.floor(Math.random() * 8)]; // Mid singles
+  return [5, 1, 7, 3, 8, 6, 4, 2, 17, 11, 9, 12, 10][Math.floor(Math.random() * 13)]; // Lots of low scores
 }
 
 function undo(){
