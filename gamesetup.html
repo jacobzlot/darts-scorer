@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Darts Match Setup</title>
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div class="setup">
+  <h1>Darts Match Setup</h1>
+
+  <div class="play-mode-buttons">
+    <button class="mode-btn active" data-mode="pvp" onclick="setMode('pvp')">
+      <span class="mode-icon">👥</span>
+      <span>Player vs Player</span>
+    </button>
+    <button class="mode-btn" data-mode="ai" onclick="setMode('ai')">
+      <span class="mode-icon">🤖</span>
+      <span>Player vs AI</span>
+    </button>
+  </div>
+
+  <div class="section-label">Game type</div>
+  <div class="game-type-buttons">
+    <button class="game-type-btn" data-value="101">101</button>
+    <button class="game-type-btn" data-value="301">301</button>
+    <button class="game-type-btn active" data-value="501">501</button>
+    <button class="game-type-btn" data-value="701">701</button>
+    <button class="game-type-btn" data-value="1001">1001</button>
+  </div>
+
+  <div class="sets-legs-row">
+    <div class="input-group">
+      <label>Sets</label>
+      <select id="setsInput">
+        <option value="0">No sets</option>
+        <option value="1" selected>1 set</option>
+        <option value="3">3 sets</option>
+        <option value="5">5 sets</option>
+      </select>
+    </div>
+    <div class="input-group">
+      <label>Legs</label>
+      <select id="legsInput">
+        <option value="1">1 leg</option>
+        <option value="3" selected>3 legs</option>
+        <option value="5">5 legs</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="pvpPlayers" class="players-section">
+    <div class="players-label">2 Players</div>
+    <div class="player-inputs">
+      <div class="player-input-wrapper">
+        <input id="p1Input" placeholder="Player 1">
+      </div>
+      <div class="player-input-wrapper">
+        <input id="p2Input" placeholder="Player 2">
+      </div>
+    </div>
+  </div>
+
+  <div id="aiPlayers" class="players-section hidden">
+    <div class="players-label">Your Name</div>
+    <div class="player-inputs">
+      <div class="player-input-wrapper">
+        <input id="humanInput" placeholder="Enter your name">
+      </div>
+    </div>
+
+    <div class="ai-opponents-label">Choose Your Opponent</div>
+    
+    <div id="aiOpponentsContainer">
+      <div class="loading" style="text-align:center;padding:20px;color:#888;">Loading opponents...</div>
+    </div>
+  </div>
+
+  <button class="start-btn" onclick="startMatch()">START GAME</button>
+</div>
+
+<script>
+let selectedGameType = 501;
+let selectedMode = 'pvp';
+let selectedAI = null;
+
+// Load AI opponents from JSON on page load
+loadAIOpponents();
+
+async function loadAIOpponents() {
+  try {
+    const response = await fetch('ai-opponents.json');
+    const data = await response.json();
+    renderAIOpponents(data);
+  } catch (error) {
+    console.error('Error loading AI opponents:', error);
+    document.getElementById('aiOpponentsContainer').innerHTML = 
+      '<div style="text-align:center;padding:20px;color:#f44;">Error loading opponents. Please refresh.</div>';
+  }
+}
+
+function renderAIOpponents(data) {
+  const container = document.getElementById('aiOpponentsContainer');
+  container.innerHTML = '';
+  
+  // Sort tiers by order
+  data.tiers.sort((a, b) => a.order - b.order);
+  
+  data.tiers.forEach(tier => {
+    // Create tier container
+    const tierDiv = document.createElement('div');
+    tierDiv.className = 'ai-tier';
+    
+    // Tier label
+    const labelDiv = document.createElement('div');
+    labelDiv.className = 'tier-label';
+    labelDiv.textContent = tier.name;
+    tierDiv.appendChild(labelDiv);
+    
+    // Grid container
+    const gridDiv = document.createElement('div');
+    gridDiv.className = 'ai-grid';
+    
+    tier.opponents.forEach(opponent => {
+      // AI box
+      const boxDiv = document.createElement('div');
+      boxDiv.className = 'ai-box';
+      if (tier.cssClass) boxDiv.classList.add(tier.cssClass);
+      
+      boxDiv.dataset.name = opponent.name;
+      boxDiv.dataset.avg = opponent.average;
+      boxDiv.dataset.checkout = opponent.checkout;
+      
+      // Avatar
+      const avatarDiv = document.createElement('div');
+      avatarDiv.className = 'ai-avatar-sm';
+      if (tier.cssClass) avatarDiv.classList.add(tier.cssClass);
+      
+      // Generate initials
+      const initials = opponent.name.split(' ')
+        .map(word => word[0])
+        .join('')
+        .substring(0, 3);
+      
+      // Image (if specified)
+      if (opponent.image) {
+        const img = document.createElement('img');
+        img.src = opponent.image;
+        img.alt = opponent.name;
+        img.onerror = function() { this.style.display = 'none'; };
+        avatarDiv.appendChild(img);
+      }
+      
+      // Initials fallback
+      const initialsSpan = document.createElement('span');
+      initialsSpan.className = 'avatar-initials';
+      initialsSpan.textContent = initials;
+      avatarDiv.appendChild(initialsSpan);
+      
+      boxDiv.appendChild(avatarDiv);
+      
+      // Name
+      const nameDiv = document.createElement('div');
+      nameDiv.className = 'ai-name';
+      nameDiv.textContent = opponent.name;
+      boxDiv.appendChild(nameDiv);
+      
+      // Average stat
+      const statDiv = document.createElement('div');
+      statDiv.className = 'ai-stat';
+      statDiv.textContent = `${opponent.average} avg`;
+      boxDiv.appendChild(statDiv);
+      
+      // Subtitle (if specified)
+      if (opponent.subtitle) {
+        const subtitleDiv = document.createElement('div');
+        subtitleDiv.className = 'ai-subtitle';
+        subtitleDiv.textContent = opponent.subtitle;
+        boxDiv.appendChild(subtitleDiv);
+      }
+      
+      // Click handler
+      boxDiv.addEventListener('click', function() {
+        document.querySelectorAll('.ai-box').forEach(b => b.classList.remove('selected'));
+        this.classList.add('selected');
+        selectedAI = {
+          name: opponent.name,
+          avg: opponent.average,
+          checkout: opponent.checkout
+        };
+      });
+      
+      gridDiv.appendChild(boxDiv);
+    });
+    
+    tierDiv.appendChild(gridDiv);
+    container.appendChild(tierDiv);
+  });
+}
+
+// Handle play mode selection
+function setMode(mode) {
+  selectedMode = mode;
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === mode);
+  });
+  
+  // Show/hide appropriate sections
+  if(mode === 'pvp'){
+    document.getElementById('pvpPlayers').classList.remove('hidden');
+    document.getElementById('aiPlayers').classList.add('hidden');
+  } else {
+    document.getElementById('pvpPlayers').classList.add('hidden');
+    document.getElementById('aiPlayers').classList.remove('hidden');
+  }
+}
+
+// Handle game type button selection
+document.querySelectorAll('.game-type-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.game-type-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    selectedGameType = parseInt(this.dataset.value);
+  });
+});
+
+function startMatch(){
+  if (selectedMode === 'ai') {
+    if(!selectedAI){
+      alert('Please select an AI opponent');
+      return;
+    }
+    
+    const config = {
+      p1: document.getElementById("humanInput").value || "You",
+      p2: selectedAI.name,
+      sets: +document.getElementById("setsInput").value,
+      legs: +document.getElementById("legsInput").value,
+      gameType: selectedGameType,
+      isAI: true,
+      aiAverage: selectedAI.avg,
+      aiCheckout: selectedAI.checkout
+    };
+    
+    localStorage.setItem("dartsConfig", JSON.stringify(config));
+    window.location.href = "scoreboard.html";
+    return;
+  }
+  
+  // PvP mode
+  const config = {
+    p1: document.getElementById("p1Input").value || "Player 1",
+    p2: document.getElementById("p2Input").value || "Player 2",
+    sets: +document.getElementById("setsInput").value,
+    legs: +document.getElementById("legsInput").value,
+    gameType: selectedGameType,
+    isAI: false
+  };
+  
+  localStorage.setItem("dartsConfig", JSON.stringify(config));
+  window.location.href = "scoreboard.html";
+}
+</script>
+
+</body>
+</html>

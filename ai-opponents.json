@@ -1,0 +1,118 @@
+{
+  "tiers": [
+    {
+      "name": "Beginner",
+      "order": 1,
+      "cssClass": "",
+      "opponents": [
+        {
+          "name": "Practice Patty",
+          "average": 35,
+          "checkout": 15,
+          "image": null
+        },
+        {
+          "name": "Casual Chris",
+          "average": 42,
+          "checkout": 22,
+          "image": null
+        },
+        {
+          "name": "Rookie Ray",
+          "average": 48,
+          "checkout": 28,
+          "image": null
+        }
+      ]
+    },
+    {
+      "name": "Intermediate",
+      "order": 2,
+      "cssClass": "",
+      "opponents": [
+        {
+          "name": "Steady Steve",
+          "average": 58,
+          "checkout": 35,
+          "image": null
+        },
+        {
+          "name": "Accurate Amy",
+          "average": 65,
+          "checkout": 40,
+          "image": null
+        },
+        {
+          "name": "Clubhouse Carl",
+          "average": 70,
+          "checkout": 42,
+          "image": null
+        }
+      ]
+    },
+    {
+      "name": "Semi-Pro",
+      "order": 3,
+      "cssClass": "",
+      "opponents": [
+        {
+          "name": "County Chris",
+          "average": 78,
+          "checkout": 44,
+          "image": null
+        },
+        {
+          "name": "Circuit Sarah",
+          "average": 82,
+          "checkout": 46,
+          "image": null
+        },
+        {
+          "name": "Qualifier Quinn",
+          "average": 85,
+          "checkout": 48,
+          "image": null
+        }
+      ]
+    },
+    {
+      "name": "Professional",
+      "order": 4,
+      "cssClass": "pro",
+      "opponents": [
+        {
+          "name": "Damon Heta",
+          "average": 93,
+          "checkout": 38,
+          "image": "player-heta.png"
+        },
+        {
+          "name": "Michael van Gerwen",
+          "average": 96,
+          "checkout": 40,
+          "image": "player-mvg.png"
+        },
+        {
+          "name": "Luke Littler",
+          "average": 101,
+          "checkout": 42,
+          "image": "player-littler.png"
+        }
+      ]
+    },
+    {
+      "name": "Legend",
+      "order": 5,
+      "cssClass": "legend",
+      "opponents": [
+        {
+          "name": "Phil Taylor",
+          "average": 105.2,
+          "checkout": 48,
+          "image": "player-taylor.png",
+          "subtitle": "The Power"
+        }
+      ]
+    }
+  ]
+}
