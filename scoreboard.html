@@ -2,11 +2,32 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Darts Scorer</title>
+<title>Dart Practice - Live Match</title>
 <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
+
+<!-- Header -->
+<header class="site-header">
+  <div class="header-content">
+    <div class="logo-section">
+      <img src="dartpractice-logo.png" alt="Dart Practice" class="site-logo" onerror="this.style.display='none'">
+      <div class="site-name">
+        <span class="site-title">DartPractice</span>
+        <span class="site-domain">.com</span>
+      </div>
+    </div>
+    <nav class="header-nav">
+      <a href="gamesetup.html" class="nav-link">New Match</a>
+      <a href="#" class="nav-link">Stats</a>
+      <a href="#" class="nav-link">About</a>
+      <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle dark mode">
+        <span id="themeIcon">🌙</span>
+      </button>
+    </nav>
+  </div>
+</header>
 
 <div class="scoreboard">
 
@@ -73,6 +94,34 @@
 </div>
 
 <script>
+// Theme Toggle
+function toggleTheme() {
+  const body = document.body;
+  const themeIcon = document.getElementById('themeIcon');
+  
+  body.classList.toggle('dark-mode');
+  
+  if (body.classList.contains('dark-mode')) {
+    themeIcon.textContent = '☀️';
+    localStorage.setItem('theme', 'dark');
+  } else {
+    themeIcon.textContent = '🌙';
+    localStorage.setItem('theme', 'light');
+  }
+}
+
+// Load saved theme on page load
+(function() {
+  const savedTheme = localStorage.getItem('theme');
+  const body = document.body;
+  const themeIcon = document.getElementById('themeIcon');
+  
+  if (savedTheme === 'dark') {
+    body.classList.add('dark-mode');
+    if(themeIcon) themeIcon.textContent = '☀️';
+  }
+})();
+
 let START = 501;
 const $ = id => document.getElementById(id);
 
