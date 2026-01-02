@@ -22,6 +22,9 @@
       <a href="#" class="nav-link active">Practice</a>
       <a href="#" class="nav-link">Stats</a>
       <a href="#" class="nav-link">About</a>
+      <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle dark mode">
+        <span id="themeIcon">🌙</span>
+      </button>
     </nav>
   </div>
 </header>
@@ -64,7 +67,7 @@
 
   <div class="sets-legs-row">
     <div class="input-group">
-      <label>Sets (First to)</label>
+      <label>Sets</label>
       <select id="setsInput">
         <option value="0">No sets</option>
         <option value="1" selected>1 set</option>
@@ -73,7 +76,7 @@
       </select>
     </div>
     <div class="input-group">
-      <label>Legs (First to)</label>
+      <label>Legs</label>
       <select id="legsInput">
         <option value="1">1 leg</option>
         <option value="3" selected>3 legs</option>
@@ -83,7 +86,7 @@
   </div>
 
   <div id="pvpPlayers" class="players-section">
-    <div class="players-label">Players</div>
+    <div class="players-label">2 Players</div>
     <div class="player-inputs">
       <div class="player-input-wrapper">
         <input id="p1Input" placeholder="Player 1">
@@ -95,7 +98,7 @@
   </div>
 
   <div id="aiPlayers" class="players-section hidden">
-    <div class="players-label">Name</div>
+    <div class="players-label">Your Name</div>
     <div class="player-inputs">
       <div class="player-input-wrapper">
         <input id="humanInput" placeholder="Enter your name">
@@ -114,6 +117,34 @@
 </div>
 
 <script>
+// Theme Toggle
+function toggleTheme() {
+  const body = document.body;
+  const themeIcon = document.getElementById('themeIcon');
+  
+  body.classList.toggle('dark-mode');
+  
+  if (body.classList.contains('dark-mode')) {
+    themeIcon.textContent = '☀️';
+    localStorage.setItem('theme', 'dark');
+  } else {
+    themeIcon.textContent = '🌙';
+    localStorage.setItem('theme', 'light');
+  }
+}
+
+// Load saved theme
+(function() {
+  const savedTheme = localStorage.getItem('theme');
+  const body = document.body;
+  const themeIcon = document.getElementById('themeIcon');
+  
+  if (savedTheme === 'dark') {
+    body.classList.add('dark-mode');
+    if(themeIcon) themeIcon.textContent = '☀️';
+  }
+})();
+
 let selectedGameType = 501;
 let selectedMode = 'pvp';
 let selectedAI = null;
@@ -299,4 +330,3 @@ function startMatch(){
 
 </body>
 </html>
-
