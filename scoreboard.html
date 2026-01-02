@@ -150,11 +150,10 @@ const Engine = {
     const s=this.state;
     s.p1Score=s.p2Score=START;
     s.turn=next;
-    // Limit history arrays to last 50 items for performance
-    if(s.p1Hist.length > 50) s.p1Hist = s.p1Hist.slice(-50);
-    if(s.p2Hist.length > 50) s.p2Hist = s.p2Hist.slice(-50);
-    s.p1Hist.push({type:"start",score:START});
-    s.p2Hist.push({type:"start",score:START});
+    // Clear history for new leg - start fresh
+    s.p1Hist = [{type:"start",score:START}];
+    s.p2Hist = [{type:"start",score:START}];
+    // Clear leg-level stats (match stats persist)
     s.p1Pts=s.p2Pts=0;
     s.p1Turns=s.p2Turns=0;
   },
