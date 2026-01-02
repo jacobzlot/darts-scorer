@@ -2,527 +2,268 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Darts Scorer</title>
+<title>Darts Match Setup</title>
 <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
-<div class="scoreboard">
+<div class="setup">
+  <h1>Darts Match Setup</h1>
 
-  <div id="matchInfo" class="match-info"></div>
+  <div class="play-mode-buttons">
+    <button class="mode-btn active" data-mode="pvp" onclick="setMode('pvp')">
+      <span class="mode-icon">👥</span>
+      <span>Player vs Player</span>
+    </button>
+    <button class="mode-btn" data-mode="ai" onclick="setMode('ai')">
+      <span class="mode-icon">🤖</span>
+      <span>Player vs AI</span>
+    </button>
+  </div>
 
-  <div class="top">
-    <div class="player">
-      <div id="p1Score" class="score">501</div>
-      <div id="p1Name" class="name"></div>
+  <div class="section-label">Game type</div>
+  <div class="game-type-buttons">
+    <button class="game-type-btn" data-value="101">101</button>
+    <button class="game-type-btn" data-value="301">301</button>
+    <button class="game-type-btn active" data-value="501">501</button>
+    <button class="game-type-btn" data-value="701">701</button>
+    <button class="game-type-btn" data-value="1001">1001</button>
+  </div>
+
+  <div class="sets-legs-row">
+    <div class="input-group">
+      <label>Sets</label>
+      <select id="setsInput">
+        <option value="0">No sets</option>
+        <option value="1" selected>1 set</option>
+        <option value="3">3 sets</option>
+        <option value="5">5 sets</option>
+      </select>
     </div>
-
-    <div class="center-stats">
-      <div>LEGS<span id="p1Legs">0</span></div>
-      <div>SETS<span id="p1Sets">0</span></div>
-      <div>SETS<span id="p2Sets">0</span></div>
-      <div>LEGS<span id="p2Legs">0</span></div>
-    </div>
-
-    <div class="player">
-      <div id="p2Score" class="score">501</div>
-      <div id="p2Name" class="name"></div>
+    <div class="input-group">
+      <label>Legs</label>
+      <select id="legsInput">
+        <option value="1">1 leg</option>
+        <option value="3" selected>3 legs</option>
+        <option value="5">5 legs</option>
+      </select>
     </div>
   </div>
 
-  <div class="divider"></div>
-
-  <div class="input-row">
-    <button class="action" onclick="undo()">⟲</button>
-    <input id="throwInput" class="throw" type="number" min="0" max="180" placeholder="Enter score">
-    <button class="action" onclick="submitThrow()">➤</button>
-  </div>
-
-  <div class="hint">Press Enter to submit. Undo restores the last visit.</div>
-
-  <div class="divider"></div>
-
-  <div class="history-area">
-    <div class="hist-col">
-      <ul id="p1History" class="hist-list"></ul>
-    </div>
-    <div class="hist-col">
-      <ul id="p2History" class="hist-list"></ul>
+  <div id="pvpPlayers" class="players-section">
+    <div class="players-label">2 Players</div>
+    <div class="player-inputs">
+      <div class="player-input-wrapper">
+        <input id="p1Input" placeholder="Player 1">
+      </div>
+      <div class="player-input-wrapper">
+        <input id="p2Input" placeholder="Player 2">
+      </div>
     </div>
   </div>
 
-  <div class="divider"></div>
-
-  <div class="bottom">
-    <div class="stats">
-      <h3>GAME AVERAGES</h3>
-      <table>
-        <tr><td>3 Dart</td><td id="p1Avg3" class="value">—</td></tr>
-        <tr><td>1 Dart</td><td id="p1Avg1" class="value">—</td></tr>
-      </table>
+  <div id="aiPlayers" class="players-section hidden">
+    <div class="players-label">Your Name</div>
+    <div class="player-inputs">
+      <div class="player-input-wrapper">
+        <input id="humanInput" placeholder="Enter your name">
+      </div>
     </div>
-    <div class="stats">
-      <h3>GAME AVERAGES</h3>
-      <table>
-        <tr><td>3 Dart</td><td id="p2Avg3" class="value">—</td></tr>
-        <tr><td>1 Dart</td><td id="p2Avg1" class="value">—</td></tr>
-      </table>
+
+    <div class="ai-opponents-label">Choose Your Opponent</div>
+    
+    <div id="aiOpponentsContainer">
+      <!-- AI opponents will be loaded dynamically from ai-opponents.json -->
+      <div class="loading" style="text-align:center;padding:20px;color:#888;">Loading opponents...</div>
     </div>
   </div>
+
+  <button class="start-btn" onclick="startMatch()">START GAME</button>
 </div>
 
 <script>
-let START = 501;
-const $ = id => document.getElementById(id);
+let selectedGameType = 501;
+let selectedMode = 'pvp';
+let selectedAI = null;
 
-const Engine = {
-  cfg:{},
-  state:{
-    p1Score:START,p2Score:START,
-    p1Legs:0,p2Legs:0,
-    p1Sets:0,p2Sets:0,
-    turn:0,
-    p1Hist:[],p2Hist:[],
-    p1Pts:0,p2Pts:0,
-    p1Turns:0,p2Turns:0,
-    undo:[]
-  },
+// Load AI opponents from external JSON file
+async function loadAIOpponents() {
+  try {
+    const response = await fetch('ai-opponents.json');
+    const data = await response.json();
+    renderAIOpponents(data);
+  } catch (error) {
+    console.error('Error loading AI opponents:', error);
+    document.getElementById('aiOpponentsContainer').innerHTML = 
+      '<div style="text-align:center;padding:20px;color:#f44;">Error loading opponents. Please check that ai-opponents.json is in the same folder.</div>';
+  }
+}
 
-  snapshot(){ return JSON.parse(JSON.stringify(this.state)); },
-  restore(s){ this.state=s; },
+// Initialize on page load
+loadAIOpponents();
 
-  resetLeg(next){
-    const s=this.state;
-    s.p1Score=s.p2Score=START;
-    s.turn=next;
-    s.p1Hist=[{type:"start",score:START}];
-    s.p2Hist=[{type:"start",score:START}];
-    s.p1Pts=s.p2Pts=0;
-    s.p1Turns=s.p2Turns=0;
-  },
-
-  apply(score){
-    const s=this.state;
+function renderAIOpponents(data) {
+  const container = document.getElementById('aiOpponentsContainer');
+  container.innerHTML = '';
+  
+  // Sort tiers by order
+  data.tiers.sort((a, b) => a.order - b.order);
+  
+  data.tiers.forEach(tier => {
+    // Create tier container
+    const tierDiv = document.createElement('div');
+    tierDiv.className = 'ai-tier';
     
-    // Limit undo stack to last 10 moves for performance
-    s.undo.push(this.snapshot());
-    if(s.undo.length > 10){
-      s.undo.shift(); // Remove oldest
-    }
+    // Tier label
+    const labelDiv = document.createElement('div');
+    labelDiv.className = 'tier-label';
+    labelDiv.textContent = tier.name;
+    tierDiv.appendChild(labelDiv);
+    
+    // Grid container
+    const gridDiv = document.createElement('div');
+    gridDiv.className = 'ai-grid';
+    
+    tier.opponents.forEach(opponent => {
+      // AI box
+      const boxDiv = document.createElement('div');
+      boxDiv.className = 'ai-box';
+      if (tier.cssClass) boxDiv.classList.add(tier.cssClass);
+      
+      boxDiv.dataset.name = opponent.name;
+      boxDiv.dataset.avg = opponent.average;
+      boxDiv.dataset.checkout = opponent.checkout;
+      
+      // Avatar
+      const avatarDiv = document.createElement('div');
+      avatarDiv.className = 'ai-avatar-sm';
+      if (tier.cssClass) avatarDiv.classList.add(tier.cssClass);
+      
+      // Generate initials
+      const initials = opponent.name.split(' ')
+        .map(word => word[0])
+        .join('')
+        .substring(0, 3);
+      
+      // Image (if specified)
+      if (opponent.image) {
+        const img = document.createElement('img');
+        img.src = opponent.image;
+        img.alt = opponent.name;
+        img.onerror = function() { this.style.display = 'none'; };
+        avatarDiv.appendChild(img);
+      }
+      
+      // Initials fallback
+      const initialsSpan = document.createElement('span');
+      initialsSpan.className = 'avatar-initials';
+      initialsSpan.textContent = initials;
+      avatarDiv.appendChild(initialsSpan);
+      
+      boxDiv.appendChild(avatarDiv);
+      
+      // Name
+      const nameDiv = document.createElement('div');
+      nameDiv.className = 'ai-name';
+      nameDiv.textContent = opponent.name;
+      boxDiv.appendChild(nameDiv);
+      
+      // Average stat
+      const statDiv = document.createElement('div');
+      statDiv.className = 'ai-stat';
+      statDiv.textContent = `${opponent.average} avg`;
+      boxDiv.appendChild(statDiv);
+      
+      // Subtitle (if specified)
+      if (opponent.subtitle) {
+        const subtitleDiv = document.createElement('div');
+        subtitleDiv.className = 'ai-subtitle';
+        subtitleDiv.textContent = opponent.subtitle;
+        boxDiv.appendChild(subtitleDiv);
+      }
+      
+      // Click handler
+      boxDiv.addEventListener('click', function() {
+        document.querySelectorAll('.ai-box').forEach(b => b.classList.remove('selected'));
+        this.classList.add('selected');
+        selectedAI = {
+          name: opponent.name,
+          avg: opponent.average,
+          checkout: opponent.checkout
+        };
+      });
+      
+      gridDiv.appendChild(boxDiv);
+    });
+    
+    tierDiv.appendChild(gridDiv);
+    container.appendChild(tierDiv);
+  });
+}
 
-    const isP1=s.turn===0;
-    const cur=isP1?s.p1Score:s.p2Score;
-    const hist=isP1?s.p1Hist:s.p2Hist;
-
-    if(isP1)s.p1Turns++; else s.p2Turns++;
-
-    const after=cur-score;
-    if(after<0||after===1){
-      hist.push({type:"bust"});
-      s.turn^=1;
-      return;
-    }
-
-    hist.push({type:"turn",scored:score,to:after});
-    if(isP1){s.p1Score=after;s.p1Pts+=score;}
-    else{s.p2Score=after;s.p2Pts+=score;}
-
-    if(after===0){
-      hist.push({type:"finish"});
-      this.winLeg(isP1?0:1);
-      return;
-    }
-    s.turn^=1;
-  },
-
-  winLeg(w){
-    const s=this.state;
-    if(w===0)s.p1Legs++; else s.p2Legs++;
-
-    if(s.p1Legs===this.cfg.legs||s.p2Legs===this.cfg.legs){
-      if(s.p1Legs===this.cfg.legs)s.p1Sets++;
-      else s.p2Sets++;
-      s.p1Legs=s.p2Legs=0;
-    }
-    this.resetLeg(w^1);
-  }
-};
-
-function renderHist(id,h){
-  const ul=$(id); 
+// Handle play mode selection
+function setMode(mode) {
+  selectedMode = mode;
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === mode);
+  });
   
-  // Only render the last 15 items for performance
-  const maxDisplay = 15;
-  const startIdx = Math.max(0, h.length - maxDisplay);
-  const itemsToShow = h.slice(startIdx);
-  
-  // Only update if changed
-  const newHTML = itemsToShow.map(e => {
-    if(e.type==="start"){
-      return `<li class="hist-item start">${e.score}</li>`;
-    }else if(e.type==="turn"){
-      return `<li class="hist-item"><span class="scored">${e.scored}</span><span class="remain">${e.to}</span></li>`;
-    }else if(e.type==="bust"){
-      return `<li class="hist-item bust">BUST</li>`;
-    }else if(e.type==="finish"){
-      return `<li class="hist-item finish">FINISH</li>`;
-    }
-    return '';
-  }).join('');
-  
-  if(ul.innerHTML !== newHTML){
-    ul.innerHTML = newHTML;
-    // Auto-scroll to bottom to show latest
-    const container = ul.parentElement;
-    if(container){
-      container.scrollTop = container.scrollHeight;
-    }
+  // Show/hide appropriate sections
+  if(mode === 'pvp'){
+    document.getElementById('pvpPlayers').classList.remove('hidden');
+    document.getElementById('aiPlayers').classList.add('hidden');
+  } else {
+    document.getElementById('pvpPlayers').classList.add('hidden');
+    document.getElementById('aiPlayers').classList.remove('hidden');
   }
 }
 
-function render(){
-  const s=Engine.state;
-  
-  // Update scores only if changed
-  const p1ScoreEl = $("p1Score");
-  const p2ScoreEl = $("p2Score");
-  if(p1ScoreEl.textContent !== s.p1Score.toString()) p1ScoreEl.textContent = s.p1Score;
-  if(p2ScoreEl.textContent !== s.p2Score.toString()) p2ScoreEl.textContent = s.p2Score;
-  
-  // Update legs/sets
-  $("p1Legs").textContent=s.p1Legs;
-  $("p2Legs").textContent=s.p2Legs;
-  $("p1Sets").textContent=s.p1Sets;
-  $("p2Sets").textContent=s.p2Sets;
+// Handle game type button selection
+document.querySelectorAll('.game-type-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.game-type-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    selectedGameType = parseInt(this.dataset.value);
+  });
+});
 
-  renderHist("p1History",s.p1Hist);
-  renderHist("p2History",s.p2Hist);
-
-  // Update averages
-  $("p1Avg3").textContent=s.p1Turns?(s.p1Pts/s.p1Turns).toFixed(2):"—";
-  $("p2Avg3").textContent=s.p2Turns?(s.p2Pts/s.p2Turns).toFixed(2):"—";
-  $("p1Avg1").textContent=s.p1Turns?(s.p1Pts/s.p1Turns/3).toFixed(2):"—";
-  $("p2Avg1").textContent=s.p2Turns?(s.p2Pts/s.p2Turns/3).toFixed(2):"—";
-}
-
-function initMatch(){
-  // Load config from localStorage
-  const configStr = localStorage.getItem("dartsConfig");
-  if(!configStr){
-    alert("No match configuration found. Redirecting to setup...");
-    window.location.href = "gamesetup.html";
+function startMatch(){
+  if (selectedMode === 'ai') {
+    if(!selectedAI){
+      alert('Please select an AI opponent');
+      return;
+    }
+    
+    const config = {
+      p1: document.getElementById("humanInput").value || "You",
+      p2: selectedAI.name,
+      sets: +document.getElementById("setsInput").value,
+      legs: +document.getElementById("legsInput").value,
+      gameType: selectedGameType,
+      isAI: true,
+      aiAverage: selectedAI.avg,
+      aiCheckout: selectedAI.checkout
+    };
+    
+    localStorage.setItem("dartsConfig", JSON.stringify(config));
+    window.location.href = "scoreboard.html";
     return;
   }
   
-  Engine.cfg = JSON.parse(configStr);
+  // PvP mode
+  const config = {
+    p1: document.getElementById("p1Input").value || "Player 1",
+    p2: document.getElementById("p2Input").value || "Player 2",
+    sets: +document.getElementById("setsInput").value,
+    legs: +document.getElementById("legsInput").value,
+    gameType: selectedGameType,
+    isAI: false
+  };
   
-  // Set the starting score based on game type
-  START = Engine.cfg.gameType || 501;
-  
-  Engine.resetLeg(0);
-  
-  $("p1Name").textContent=Engine.cfg.p1;
-  $("p2Name").textContent=Engine.cfg.p2;
-  
-  // Update match info text
-  let matchText = `${START} GAME`;
-  if(Engine.cfg.sets > 0){
-    matchText += ` — FIRST OF ${Engine.cfg.sets} SETS`;
-  }
-  matchText += ` — FIRST OF ${Engine.cfg.legs} LEGS`;
-  
-  $("matchInfo").textContent = matchText;
-  
-  render();
-  $("throwInput").focus();
-  
-  // If AI starts, play their turn
-  if(Engine.cfg.isAI && Engine.state.turn === 1){
-    $("throwInput").disabled = true;
-    requestAnimationFrame(() => {
-      setTimeout(() => {
-        playAITurn();
-        $("throwInput").disabled = false;
-        $("throwInput").focus();
-      }, 800);
-    });
-  }
+  localStorage.setItem("dartsConfig", JSON.stringify(config));
+  window.location.href = "scoreboard.html";
 }
-
-function submitThrow(){
-  const v=+$("throwInput").value;
-  $("throwInput").value="";
-  if(v<0||v>180)return;
-  Engine.apply(v);
-  render();
-  
-  // Check if it's AI's turn and game is still active
-  if(Engine.cfg.isAI && Engine.state.turn === 1 && Engine.state.p2Score > 0){
-    // Disable input during AI turn
-    $("throwInput").disabled = true;
-    
-    // Use requestAnimationFrame for smoother performance
-    requestAnimationFrame(() => {
-      setTimeout(() => {
-        playAITurn();
-        $("throwInput").disabled = false;
-        $("throwInput").focus();
-      }, 600); // Reduced from 800ms for faster play
-    });
-  }
-}
-
-function playAITurn(){
-  const avg = Engine.cfg.aiAverage;
-  const checkoutPct = Engine.cfg.aiCheckout / 100;
-  const remaining = Engine.state.p2Score;
-  
-  // Calculate actual SCORING average (higher than overall leg average)
-  // The overall average includes poor checkout attempts which drag it down
-  // Someone with 28 avg and 12% checkout probably scores like 40-45 but misses lots of doubles
-  const scoringAverage = calculateScoringAverage(avg, checkoutPct);
-  
-  let score;
-  
-  // Determine if AI is on a finish
-  if(remaining <= 170 && remaining !== 169 && remaining !== 168 && remaining !== 166 && 
-     remaining !== 165 && remaining !== 163 && remaining !== 162 && remaining !== 159){
-    
-    // Checkout difficulty modifier
-    let checkoutDifficulty = 1.0;
-    if(remaining <= 40) checkoutDifficulty = 1.5;
-    else if(remaining <= 100) checkoutDifficulty = 1.2;
-    else checkoutDifficulty = 0.7;
-    
-    const adjustedCheckoutChance = checkoutPct * checkoutDifficulty;
-    
-    if(Math.random() < adjustedCheckoutChance){
-      score = remaining; // Successfully finish
-    } else {
-      // Miss the checkout - use scoring average for setup shots
-      score = simulateCheckoutAttempt(scoringAverage, remaining);
-    }
-  } else {
-    // Not on a finish - use scoring average (NOT overall average)
-    score = simulateThreeDarts(scoringAverage, remaining, false);
-  }
-  
-  Engine.apply(score);
-  
-  // Use requestAnimationFrame for smoother rendering
-  requestAnimationFrame(() => render());
-}
-
-// Calculate actual scoring average from overall leg average and checkout %
-function calculateScoringAverage(overallAverage, checkoutPercentage) {
-  // The overall average includes checkout struggles
-  // Someone with low average but decent checkout % scores higher than their overall average
-  // Someone with low average AND low checkout % is genuinely poor at scoring too
-  
-  // Key insight: Poor checkouts cost you ~10-30 points per leg on average
-  // depending on how bad you are at finishing
-  
-  // Checkout penalty calculation:
-  // - 50%+ checkout: minimal penalty (~5 points)
-  // - 40-50% checkout: small penalty (~8 points)
-  // - 30-40% checkout: moderate penalty (~12 points)
-  // - 20-30% checkout: large penalty (~18 points)
-  // - 10-20% checkout: huge penalty (~25 points)
-  // - <10% checkout: massive penalty (~35 points)
-  
-  let checkoutPenalty;
-  if(checkoutPercentage >= 0.50) checkoutPenalty = 5;
-  else if(checkoutPercentage >= 0.40) checkoutPenalty = 8;
-  else if(checkoutPercentage >= 0.30) checkoutPenalty = 12;
-  else if(checkoutPercentage >= 0.20) checkoutPenalty = 18;
-  else if(checkoutPercentage >= 0.10) checkoutPenalty = 25;
-  else checkoutPenalty = 35;
-  
-  // Scoring average = overall average + checkout penalty
-  const scoringAvg = overallAverage + checkoutPenalty;
-  
-  // Cap at reasonable limits
-  // Even terrible finishers can't score above ~110 average
-  // Even with great finishing, minimum scoring average is the overall average
-  return Math.min(Math.max(scoringAvg, overallAverage), 110);
-}
-
-// Simulate a checkout attempt that misses
-function simulateCheckoutAttempt(average, remaining){
-  // Professionals play SAFE on checkouts - they won't bust from standard finishes
-  // They aim for setup shots and only risk busting when going for the actual double
-  
-  const trebleRate = getTrebleRate(average);
-  let score = 0;
-  
-  // Common checkout routes and what happens when you miss
-  if(remaining <= 40){
-    // Single dart at double - if miss, usually hit single or close
-    const doubleRate = trebleRate * 0.7;
-    if(Math.random() < doubleRate){
-      return remaining; // Hit the double
-    } else {
-      // Missed double - hit single or nearby
-      return Math.floor(remaining / 2) + Math.floor(Math.random() * 10);
-    }
-  } else if(remaining <= 60){
-    // Usually S20 then double - if miss double, leave small number
-    const dart1 = Math.random() < trebleRate ? 60 : 20;
-    score += dart1;
-    const left = remaining - score;
-    
-    if(left <= 40 && left > 0){
-      const doubleRate = trebleRate * 0.7;
-      if(Math.random() < doubleRate){
-        return remaining; // Finished
-      } else {
-        // Missed double, hit single or close
-        score += Math.floor(left / 2) + Math.floor(Math.random() * 8);
-        return Math.min(score, remaining - 2); // Never bust, leave even
-      }
-    }
-    return score;
-  } else if(remaining <= 100){
-    // Need 2 darts to set up - professionals WON'T BUST
-    // Example: 80 = T20(60) + D10(20) or S20(20) + T20(60) + D0
-    
-    // Dart 1: Aim for T20 or S20
-    const dart1 = Math.random() < trebleRate ? 60 : 20;
-    score += dart1;
-    let left = remaining - score;
-    
-    // Dart 2: Be smart - don't bust
-    if(left <= 40){
-      // Can finish with one dart
-      const doubleRate = trebleRate * 0.7;
-      if(Math.random() < doubleRate){
-        return remaining; // Finished
-      } else {
-        // Miss double - add single or nearby
-        score += Math.floor(left / 2) + Math.floor(Math.random() * 6);
-      }
-    } else if(left < remaining){
-      // Setup for next turn - aim for T20 or S20, but DON'T BUST
-      const safeMax = left - 2; // Never leave 1 or bust
-      const dart2Options = Math.random() < trebleRate ? 
-        [60, 57, 54] : [20, 19, 18, 5, 1];
-      
-      let dart2 = dart2Options[Math.floor(Math.random() * dart2Options.length)];
-      
-      // Safety check - don't bust
-      if(score + dart2 > remaining){
-        dart2 = Math.min(20, remaining - score - 2);
-      }
-      
-      score += dart2;
-      left = remaining - score;
-      
-      // Dart 3: Only if we can finish or setup
-      if(left <= 40 && left > 0){
-        const doubleRate = trebleRate * 0.7;
-        if(Math.random() < doubleRate){
-          return remaining; // Finished
-        } else {
-          score += Math.floor(left / 2) + Math.floor(Math.random() * 5);
-        }
-      }
-    }
-    
-    // Ensure we didn't bust and didn't leave 1
-    if(score >= remaining) score = remaining - (2 + Math.floor(Math.random() * 20));
-    if(remaining - score === 1) score -= 1;
-    
-    return Math.max(0, score);
-  } else {
-    // 101-170: Need multiple big scores
-    score = simulateThreeDarts(average, remaining, true);
-    
-    // Make sure didn't bust
-    if(score >= remaining){
-      score = remaining - (10 + Math.floor(Math.random() * 30));
-    }
-    return Math.max(0, score);
-  }
-}
-
-function getTrebleRate(average){
-  if(average >= 105) return 0.46;
-  else if(average >= 100) return 0.43;
-  else if(average >= 95) return 0.40;
-  else if(average >= 85) return 0.36;
-  else if(average >= 75) return 0.30;
-  else if(average >= 60) return 0.22;
-  else if(average >= 45) return 0.14;
-  else return 0.07;
-}
-
-// Simulate throwing 3 darts based on skill level
-function simulateThreeDarts(average, remaining, isCheckoutAttempt){
-  // Calculate treble hit percentage based on ACTUAL PDC statistics
-  const trebleHitRate = getTrebleRate(average);
-  
-  let totalScore = 0;
-  
-  // Throw 3 darts
-  for(let i = 0; i < 3; i++){
-    const dartScore = throwSingleDart(trebleHitRate, average, false, 0, i);
-    totalScore += dartScore;
-  }
-  
-  return totalScore;
-}
-
-// Simulate a single dart throw
-function throwSingleDart(trebleHitRate, average, isCheckout, remainingInTurn, dartNumber){
-  // Regular scoring dart - aim for T20
-  const hitTreble = Math.random() < trebleHitRate;
-  
-  if(hitTreble){
-    // Hit a treble - mostly T20, sometimes T19 or T18
-    const trebleChoice = Math.random();
-    if(trebleChoice < 0.75) return 60;      // T20 - most common
-    else if(trebleChoice < 0.90) return 57; // T19
-    else if(trebleChoice < 0.97) return 54; // T18
-    else return 51;                          // T17
-  } else {
-    // Missed treble - where did we land?
-    const missType = Math.random();
-    
-    if(missType < 0.40){
-      // Hit single of target number (S20, S19, S18)
-      const singleChoice = Math.random();
-      if(singleChoice < 0.65) return 20;      // S20
-      else if(singleChoice < 0.85) return 19; // S19
-      else return 18;                         // S18
-    } else if(missType < 0.70){
-      // Hit adjacent single (S5, S1 near T20)
-      const adjacentChoice = Math.random();
-      if(adjacentChoice < 0.5) return 5;  // S5 (left of 20)
-      else return 1;                       // S1 (right of 20)
-    } else if(missType < 0.85){
-      // Hit single 20 bed but outer ring
-      return 20;
-    } else {
-      // Complete miss - random low score
-      return Math.floor(Math.random() * 15) + 1;
-    }
-  }
-}
-
-function undo(){
-  if(Engine.state.undo.length){
-    Engine.restore(Engine.state.undo.pop());
-    render();
-  }
-}
-
-$("throwInput").addEventListener("keydown",e=>{
-  if(e.key==="Enter"){e.preventDefault();submitThrow();}
-});
-
-// Initialize the match when page loads
-initMatch();
 </script>
 
 </body>
