@@ -506,100 +506,34 @@ function playAITurn(){
 // Calculate actual SCORING average from overall leg average and checkout %
 // Simulate a checkout attempt that misses
 function simulateCheckoutAttempt(average, remaining){
-  // Professionals play SAFE on checkouts - they won't bust from standard finishes
-  // They aim for setup shots and only risk busting when going for the actual double
+  // SIMPLIFIED VERSION - prevent crashes and infinite loops
+  // Just throw 3 darts normally, being careful not to bust
   
-  const trebleRate = getTrebleRate(average);
   let score = 0;
   
-  // Common checkout routes and what happens when you miss
-  if(remaining <= 40){
-    // Single dart at double - if miss, usually hit single or close
-    const doubleRate = trebleRate * 0.7;
-    if(Math.random() < doubleRate){
-      return remaining; // Hit the double
-    } else {
-      // Missed double - hit single or nearby
-      return Math.floor(remaining / 2) + Math.floor(Math.random() * 10);
-    }
-  } else if(remaining <= 60){
-    // Usually S20 then double - if miss double, leave small number
-    const dart1 = Math.random() < trebleRate ? 60 : 20;
-    score += dart1;
-    const left = remaining - score;
+  // Throw up to 3 darts
+  for(let i = 0; i < 3; i++){
+    const dart = throwSingleDart(average);
     
-    if(left <= 40 && left > 0){
-      const doubleRate = trebleRate * 0.7;
-      if(Math.random() < doubleRate){
-        return remaining; // Finished
-      } else {
-        // Missed double, hit single or close
-        score += Math.floor(left / 2) + Math.floor(Math.random() * 8);
-        return Math.min(score, remaining - 2); // Never bust, leave even
-      }
-    }
-    return score;
-  } else if(remaining <= 100){
-    // Need 2 darts to set up - professionals WON'T BUST
-    // Example: 80 = T20(60) + D10(20) or S20(20) + T20(60) + D0
-    
-    // Dart 1: Aim for T20 or S20
-    const dart1 = Math.random() < trebleRate ? 60 : 20;
-    score += dart1;
-    let left = remaining - score;
-    
-    // Dart 2: Be smart - don't bust
-    if(left <= 40){
-      // Can finish with one dart
-      const doubleRate = trebleRate * 0.7;
-      if(Math.random() < doubleRate){
-        return remaining; // Finished
-      } else {
-        // Miss double - add single or nearby
-        score += Math.floor(left / 2) + Math.floor(Math.random() * 6);
-      }
-    } else if(left < remaining){
-      // Setup for next turn - aim for T20 or S20, but DON'T BUST
-      const safeMax = left - 2; // Never leave 1 or bust
-      const dart2Options = Math.random() < trebleRate ? 
-        [60, 57, 54] : [20, 19, 18, 5, 1];
-      
-      let dart2 = dart2Options[Math.floor(Math.random() * dart2Options.length)];
-      
-      // Safety check - don't bust
-      if(score + dart2 > remaining){
-        dart2 = Math.min(20, remaining - score - 2);
-      }
-      
-      score += dart2;
-      left = remaining - score;
-      
-      // Dart 3: Only if we can finish or setup
-      if(left <= 40 && left > 0){
-        const doubleRate = trebleRate * 0.7;
-        if(Math.random() < doubleRate){
-          return remaining; // Finished
-        } else {
-          score += Math.floor(left / 2) + Math.floor(Math.random() * 5);
-        }
-      }
+    // Check if adding this dart would bust or leave 1
+    if(score + dart >= remaining){
+      // Stop here, leave it for next turn
+      break;
     }
     
-    // Ensure we didn't bust and didn't leave 1
-    if(score >= remaining) score = remaining - (2 + Math.floor(Math.random() * 20));
-    if(remaining - score === 1) score -= 1;
+    score += dart;
     
-    return Math.max(0, score);
-  } else {
-    // 101-170: Need multiple big scores
-    score = simulateThreeDarts(average, remaining, true);
-    
-    // Make sure didn't bust
-    if(score >= remaining){
-      score = remaining - (10 + Math.floor(Math.random() * 30));
+    // If we've left a good finish (<=170), stop
+    if(remaining - score <= 170 && remaining - score > 1){
+      break;
     }
-    return Math.max(0, score);
   }
+  
+  // Safety checks
+  if(score >= remaining) score = Math.max(0, remaining - 10);
+  if(remaining - score === 1) score = Math.max(0, score - 1);
+  
+  return Math.max(0, Math.min(score, remaining - 2));
 }
 
 function getTrebleRate(average){
@@ -663,9 +597,9 @@ function throwSingleDart(average){
   if(average >= 55){
     // Intermediate: occasional trebles, many misses
     const rand = Math.random();
-    if(rand < 0.22) return 60; // T20
-    if(rand < 0.26) return [57, 54, 51, 48][Math.floor(Math.random() * 4)]; // Other trebles
-    if(rand < 0.46) return [20, 19, 18, 17][Math.floor(Math.random() * 4)]; // High singles
+    if(rand < 0.20) return 60; // T20 - reduced
+    if(rand < 0.24) return [57, 54][Math.floor(Math.random() * 2)]; // Other trebles - rare
+    if(rand < 0.44) return [20, 19, 18, 17][Math.floor(Math.random() * 4)]; // High singles
     if(rand < 0.68) return [15, 16, 13, 14, 12, 11][Math.floor(Math.random() * 6)]; // Mid singles
     return [5, 1, 9, 7, 3, 8, 10, 6, 4, 2][Math.floor(Math.random() * 10)]; // Misses
   }
@@ -673,20 +607,20 @@ function throwSingleDart(average){
   if(average >= 40){
     // Beginner: rare trebles, lots of low scores
     const rand = Math.random();
-    if(rand < 0.14) return 60; // T20 - rare!
-    if(rand < 0.17) return [57, 54, 51][Math.floor(Math.random() * 3)]; // Other trebles - very rare
-    if(rand < 0.32) return [20, 19, 18][Math.floor(Math.random() * 3)]; // High singles
-    if(rand < 0.52) return [15, 16, 13, 14, 12, 11, 10][Math.floor(Math.random() * 7)]; // Mid singles
-    return [5, 1, 9, 7, 3, 8, 6, 4, 2, 17][Math.floor(Math.random() * 10)]; // Low scores
+    if(rand < 0.10) return 60; // T20 - very rare
+    if(rand < 0.12) return [57, 54][Math.floor(Math.random() * 2)]; // Other trebles - extremely rare
+    if(rand < 0.26) return [20, 19, 18][Math.floor(Math.random() * 3)]; // High singles
+    if(rand < 0.50) return [15, 16, 13, 14, 12, 11, 10, 9][Math.floor(Math.random() * 8)]; // Mid singles
+    return [5, 1, 7, 3, 8, 6, 4, 2, 17, 11, 9, 12, 10][Math.floor(Math.random() * 13)]; // Low scores
   }
   
   // Very low average (< 40): almost never hit trebles, mostly low scores
   const rand = Math.random();
-  if(rand < 0.07) return 60; // T20 - extremely rare!
-  if(rand < 0.09) return [57, 54, 51, 48][Math.floor(Math.random() * 4)]; // Other trebles
-  if(rand < 0.20) return [20, 19, 18][Math.floor(Math.random() * 3)]; // High singles
-  if(rand < 0.40) return [15, 16, 13, 14, 12, 11, 10, 9][Math.floor(Math.random() * 8)]; // Mid singles
-  return [5, 1, 7, 3, 8, 6, 4, 2, 17, 11, 9, 12, 10][Math.floor(Math.random() * 13)]; // Lots of low scores
+  if(rand < 0.04) return 60; // T20 - almost never!
+  if(rand < 0.05) return [57, 54][Math.floor(Math.random() * 2)]; // Other trebles - nearly impossible
+  if(rand < 0.14) return [20, 19, 18][Math.floor(Math.random() * 3)]; // High singles - rare
+  if(rand < 0.34) return [15, 16, 13, 14, 12, 11, 10, 9, 8][Math.floor(Math.random() * 9)]; // Mid singles
+  return [5, 1, 7, 3, 6, 4, 2, 17, 11, 9, 12, 10, 8, 14][Math.floor(Math.random() * 14)]; // Lots of low scores - 66% of darts!
 }
 
 function undo(){
