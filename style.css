@@ -681,19 +681,14 @@ body{
   margin-bottom:10px;
 }
 
-.player-name{
+.player-name,
+.player-name-right{
   font-size:16px;
   font-weight:700;
   color:var(--text-primary);
   text-transform:uppercase;
   letter-spacing:0.5px;
-}
-
-.player-name-right{
-  font-size:16px;
-  font-weight:700;
-  color:var(--text-primary);
-  text-align:right;
+  display:block; /* Make sure it's visible */
 }
 
 /* ========== LEGS/SETS DISPLAY ========== */
@@ -740,7 +735,32 @@ body{
 .input-section{
   display:flex;
   justify-content:center;
+  align-items:center;
+  gap:14px;
   margin:24px 0;
+}
+
+.action{
+  width:48px;
+  height:48px;
+  border-radius:50%;
+  border:2px solid var(--border-color);
+  background:var(--bg-white);
+  color:var(--text-primary);
+  font-size:20px;
+  cursor:pointer;
+  transition:all 0.2s;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:700;
+}
+
+.action:hover{
+  border-color:var(--accent);
+  background:var(--accent);
+  color:white;
+  transform:scale(1.05);
 }
 
 .throw-input{
@@ -813,41 +833,6 @@ body{
 /* ========== CENTER HISTORY (HIDDEN - NOT USED) ========== */
 .center-history{
   display:none; /* Removed history for performance */
-}
-
-/* ========== HIDDEN CONTROLS ========== */
-.hidden-controls{
-  position:fixed;
-  bottom:20px;
-  right:20px;
-  display:flex;
-  gap:12px;
-}
-
-.action{
-  width:50px;
-  height:50px;
-  border-radius:50%;
-  border:2px solid var(--border-color);
-  background:var(--bg-white);
-  color:var(--text-primary);
-  font-size:22px;
-  cursor:pointer;
-  transition:all 0.2s;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-weight:700;
-  box-shadow:0 2px 8px rgba(0,0,0,0.1);
-}
-
-.action:hover{
-  border-color:var(--accent);
-  background:var(--accent);
-  color:white;
-  transform:scale(1.05);
-  box-shadow:0 4px 12px rgba(46,204,113,0.3);
-}
 }
 
 .divider{
