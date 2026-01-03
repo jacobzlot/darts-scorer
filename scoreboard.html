@@ -85,10 +85,6 @@
     </div>
 
     <div class="center-history">
-      <div class="history-scores">
-        <div id="p1Score2" class="history-score">501</div>
-        <div id="p2Score2" class="history-score">501</div>
-      </div>
       <div class="history-cols">
         <ul id="p1History" class="history-list"></ul>
         <ul id="p2History" class="history-list"></ul>
@@ -211,11 +207,19 @@ const Engine = {
     const after=cur-score;
     if(after<0||after===1){
       hist.push({type:"bust"});
+      
+      // Cap history array at 25 items for performance
+      if(hist.length > 25) hist.shift();
+      
       s.turn^=1;
       return;
     }
 
     hist.push({type:"turn",scored:score,to:after});
+    
+    // Cap history array at 25 items for performance
+    if(hist.length > 25) hist.shift();
+    
     if(isP1){
       s.p1Score=after;
       s.p1Pts+=score;
@@ -229,6 +233,10 @@ const Engine = {
 
     if(after===0){
       hist.push({type:"finish"});
+      
+      // Cap history array at 25 items for performance
+      if(hist.length > 25) hist.shift();
+      
       this.winLeg(isP1?0:1);
       return;
     }
@@ -262,66 +270,142 @@ const Engine = {
   }
 };
 
-function renderHist(id,h){
-  const ul=$(id); 
+// ========== EFFICIENT RENDER SYSTEM ==========
+// Track what was last rendered to avoid unnecessary DOM updates
+let lastRendered = {
+  p1Score: null,
+  p2Score: null,
+  p1Legs: null,
+  p2Legs: null,
+  p1Sets: null,
+  p2Sets: null,
+  p1HistLen: 0,
+  p2HistLen: 0
+};
+
+function renderHist(id, h){
+  // This function is now only called when history actually changed
+  const ul = $(id);
+  const isP1 = id === "p1History";
+  const lastLen = isP1 ? lastRendered.p1HistLen : lastRendered.p2HistLen;
   
-  // Only render the last 10 items for compact display
-  const maxDisplay = 10;
-  const startIdx = Math.max(0, h.length - maxDisplay);
-  const itemsToShow = h.slice(startIdx);
-  
-  // Only update if changed
-  const newHTML = itemsToShow.map(e => {
-    if(e.type==="start"){
-      return `<li class="hist-item start">${e.score}</li>`;
-    }else if(e.type==="turn"){
-      return `<li class="hist-item"><span class="scored">${e.scored}</span><span class="remain">${e.to}</span></li>`;
-    }else if(e.type==="bust"){
-      return `<li class="hist-item bust">BUST</li>`;
-    }else if(e.type==="finish"){
-      return `<li class="hist-item finish">FINISH</li>`;
-    }
-    return '';
-  }).join('');
-  
-  if(ul.innerHTML !== newHTML){
-    ul.innerHTML = newHTML;
-    // Auto-scroll to bottom to show latest
-    const container = ul.parentElement;
-    if(container){
-      container.scrollTop = container.scrollHeight;
-    }
+  // If history was reset (new leg) OR capped (shifted items), rebuild
+  if(h.length <= lastLen){
+    ul.innerHTML = "";
+    
+    // Rebuild from scratch
+    const frag = document.createDocumentFragment();
+    h.forEach(e => {
+      const li = document.createElement('li');
+      if(e.type === "start"){
+        li.className = 'hist-item start';
+        li.textContent = e.score;
+      } else if(e.type === "turn"){
+        li.className = 'hist-item';
+        li.innerHTML = `<span class="scored">${e.scored}</span><span class="remain">${e.to}</span>`;
+      } else if(e.type === "bust"){
+        li.className = 'hist-item bust';
+        li.textContent = 'BUST';
+      } else if(e.type === "finish"){
+        li.className = 'hist-item finish';
+        li.textContent = 'FINISH';
+      }
+      frag.appendChild(li);
+    });
+    ul.appendChild(frag);
+    
+    // Update tracking
+    if(isP1) lastRendered.p1HistLen = h.length;
+    else lastRendered.p2HistLen = h.length;
+    
+    // Auto-scroll
+    ul.scrollTop = ul.scrollHeight;
+    return;
   }
+  
+  // Only process new items (append only)
+  const newItems = h.slice(lastLen);
+  if(newItems.length === 0) return;
+  
+  // Use document fragment for efficient batch DOM insertion
+  const frag = document.createDocumentFragment();
+  
+  newItems.forEach(e => {
+    const li = document.createElement('li');
+    if(e.type === "start"){
+      li.className = 'hist-item start';
+      li.textContent = e.score;
+    } else if(e.type === "turn"){
+      li.className = 'hist-item';
+      li.innerHTML = `<span class="scored">${e.scored}</span><span class="remain">${e.to}</span>`;
+    } else if(e.type === "bust"){
+      li.className = 'hist-item bust';
+      li.textContent = 'BUST';
+    } else if(e.type === "finish"){
+      li.className = 'hist-item finish';
+      li.textContent = 'FINISH';
+    }
+    frag.appendChild(li);
+  });
+  
+  ul.appendChild(frag);
+  
+  // Update tracking
+  if(isP1) lastRendered.p1HistLen = h.length;
+  else lastRendered.p2HistLen = h.length;
+  
+  // Auto-scroll
+  ul.scrollTop = ul.scrollHeight;
 }
 
 function render(){
-  const s=Engine.state;
+  const s = Engine.state;
   
-  // Update both score displays
-  const p1ScoreEl = $("p1Score");
-  const p2ScoreEl = $("p2Score");
-  const p1Score2El = $("p1Score2");
-  const p2Score2El = $("p2Score2");
+  // Only update if changed
+  if(s.p1Score !== lastRendered.p1Score){
+    $("p1Score").textContent = s.p1Score;
+    lastRendered.p1Score = s.p1Score;
+  }
   
-  if(p1ScoreEl.textContent !== s.p1Score.toString()) p1ScoreEl.textContent = s.p1Score;
-  if(p2ScoreEl.textContent !== s.p2Score.toString()) p2ScoreEl.textContent = s.p2Score;
-  if(p1Score2El) p1Score2El.textContent = s.p1Score;
-  if(p2Score2El) p2Score2El.textContent = s.p2Score;
+  if(s.p2Score !== lastRendered.p2Score){
+    $("p2Score").textContent = s.p2Score;
+    lastRendered.p2Score = s.p2Score;
+  }
   
-  // Update legs/sets
-  $("p1Legs").textContent=s.p1Legs;
-  $("p2Legs").textContent=s.p2Legs;
-  $("p1Sets").textContent=s.p1Sets;
-  $("p2Sets").textContent=s.p2Sets;
-
-  renderHist("p1History",s.p1Hist);
-  renderHist("p2History",s.p2Hist);
-
-  // Update averages using match-level cumulative stats
-  $("p1Avg3").textContent=s.matchP1Turns?(s.matchP1Pts/s.matchP1Turns).toFixed(2):"—";
-  $("p2Avg3").textContent=s.matchP2Turns?(s.matchP2Pts/s.matchP2Turns).toFixed(2):"—";
-  $("p1Avg1").textContent=s.matchP1Turns?(s.matchP1Pts/s.matchP1Turns/3).toFixed(2):"—";
-  $("p2Avg1").textContent=s.matchP2Turns?(s.matchP2Pts/s.matchP2Turns/3).toFixed(2):"—";
+  if(s.p1Legs !== lastRendered.p1Legs){
+    $("p1Legs").textContent = s.p1Legs;
+    lastRendered.p1Legs = s.p1Legs;
+  }
+  
+  if(s.p2Legs !== lastRendered.p2Legs){
+    $("p2Legs").textContent = s.p2Legs;
+    lastRendered.p2Legs = s.p2Legs;
+  }
+  
+  if(s.p1Sets !== lastRendered.p1Sets){
+    $("p1Sets").textContent = s.p1Sets;
+    lastRendered.p1Sets = s.p1Sets;
+  }
+  
+  if(s.p2Sets !== lastRendered.p2Sets){
+    $("p2Sets").textContent = s.p2Sets;
+    lastRendered.p2Sets = s.p2Sets;
+  }
+  
+  // Only render history if it changed
+  if(s.p1Hist.length !== lastRendered.p1HistLen){
+    renderHist("p1History", s.p1Hist);
+  }
+  
+  if(s.p2Hist.length !== lastRendered.p2HistLen){
+    renderHist("p2History", s.p2Hist);
+  }
+  
+  // Update averages (always update these as they change frequently)
+  $("p1Avg3").textContent = s.matchP1Turns ? (s.matchP1Pts/s.matchP1Turns).toFixed(2) : "—";
+  $("p2Avg3").textContent = s.matchP2Turns ? (s.matchP2Pts/s.matchP2Turns).toFixed(2) : "—";
+  $("p1Avg1").textContent = s.matchP1Turns ? (s.matchP1Pts/s.matchP1Turns/3).toFixed(2) : "—";
+  $("p2Avg1").textContent = s.matchP2Turns ? (s.matchP2Pts/s.matchP2Turns/3).toFixed(2) : "—";
 }
 
 function initMatch(){
@@ -466,7 +550,13 @@ function submitThrow(){
   }
 }
 
+// Debounce AI turns
+let aiTurnPending = false;
+
 function playAITurn(){
+  if(aiTurnPending) return; // Prevent rapid-fire AI turns
+  aiTurnPending = true;
+  
   const avg = Engine.cfg.aiAverage;
   const checkoutPct = Engine.cfg.aiCheckout / 100;
   const remaining = Engine.state.p2Score;
@@ -500,7 +590,12 @@ function playAITurn(){
   Engine.apply(score);
   
   // Use requestAnimationFrame for smoother rendering
-  requestAnimationFrame(() => render());
+  requestAnimationFrame(() => {
+    render();
+    setTimeout(() => {
+      aiTurnPending = false; // Reset after delay
+    }, 100);
+  });
 }
 
 // Calculate actual SCORING average from overall leg average and checkout %
