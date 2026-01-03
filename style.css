@@ -810,86 +810,9 @@ body{
   font-size:15px;
 }
 
-/* ========== CENTER HISTORY ========== */
+/* ========== CENTER HISTORY (HIDDEN - NOT USED) ========== */
 .center-history{
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-}
-
-.history-cols{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:40px;
-  width:100%;
-  max-width:400px;
-}
-
-.history-list{
-  list-style:none;
-  padding:0;
-  margin:0;
-  display:flex;
-  flex-direction:column;
-  gap:6px;
-  align-items:center;
-  max-height:380px;
-  overflow-y:auto;
-}
-
-.history-list::-webkit-scrollbar{
-  width:6px;
-}
-
-.history-list::-webkit-scrollbar-track{
-  background:rgba(0,0,0,.03);
-}
-
-.history-list::-webkit-scrollbar-thumb{
-  background:rgba(0,0,0,.15);
-  border-radius:3px;
-}
-
-.hist-item{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  width:140px;
-  text-align:center;
-  font-size:18px;
-  font-weight:800;
-  color:var(--text-primary);
-}
-
-.hist-item .scored{
-  color:var(--text-secondary);
-  font-weight:600;
-}
-
-.hist-item .remain{
-  font-weight:800;
-  color:var(--text-primary);
-}
-
-.hist-item.start{
-  grid-template-columns:1fr;
-  color:var(--text-secondary);
-  font-size:16px;
-}
-
-.hist-item.bust,
-.hist-item.finish{
-  grid-template-columns:1fr;
-  font-size:13px;
-  letter-spacing:1px;
-  font-weight:700;
-}
-
-.hist-item.bust{
-  color:#e74c3c;
-}
-
-.hist-item.finish{
-  color:var(--accent);
+  display:none; /* Removed history for performance */
 }
 
 /* ========== HIDDEN CONTROLS ========== */
