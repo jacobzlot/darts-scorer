@@ -33,27 +33,6 @@
 
   <div id="matchInfo" class="match-info"></div>
 
-  <div class="top">
-    <div class="player">
-      <div id="p1Score" class="score">501</div>
-      <div id="p1Name" class="name"></div>
-    </div>
-
-    <div class="center-stats">
-      <div>LEGS<span id="p1Legs">0</span></div>
-      <div>SETS<span id="p1Sets">0</span></div>
-      <div>SETS<span id="p2Sets">0</span></div>
-      <div>LEGS<span id="p2Legs">0</span></div>
-    </div>
-
-    <div class="player">
-      <div id="p2Score" class="score">501</div>
-      <div id="p2Name" class="name"></div>
-    </div>
-  </div>
-
-  <div class="divider"></div>
-
   <div class="input-row">
     <button class="action" onclick="undo()">⟲</button>
     <input id="throwInput" class="throw" type="number" min="0" max="180" placeholder="Enter score">
@@ -62,32 +41,50 @@
 
   <div class="hint">Press Enter to submit. Undo restores the last visit.</div>
 
-  <div class="divider"></div>
-
-  <div class="history-area">
-    <div class="hist-col">
-      <ul id="p1History" class="hist-list"></ul>
+  <div class="main-area">
+    <div class="player-col">
+      <div class="player-header">
+        <div id="p1Score" class="inline-score">501</div>
+      </div>
+      <div class="hist-col">
+        <ul id="p1History" class="hist-list"></ul>
+      </div>
     </div>
-    <div class="hist-col">
-      <ul id="p2History" class="hist-list"></ul>
+
+    <div class="center-area">
+      <div id="p1Name" class="player-name"></div>
+      <div class="center-stats">
+        <div>LEGS<span id="p1Legs">0</span></div>
+        <div>SETS<span id="p1Sets">0</span></div>
+        <div>SETS<span id="p2Sets">0</span></div>
+        <div>LEGS<span id="p2Legs">0</span></div>
+      </div>
+      <div id="p2Name" class="player-name"></div>
+    </div>
+
+    <div class="player-col">
+      <div class="player-header">
+        <div id="p2Score" class="inline-score">501</div>
+      </div>
+      <div class="hist-col">
+        <ul id="p2History" class="hist-list"></ul>
+      </div>
     </div>
   </div>
-
-  <div class="divider"></div>
 
   <div class="bottom">
     <div class="stats">
       <h3>GAME AVERAGES</h3>
       <table>
-        <tr><td>3 Dart</td><td id="p1Avg3" class="value">—</td></tr>
-        <tr><td>1 Dart</td><td id="p1Avg1" class="value">—</td></tr>
+        <tr><td>3 Dart</td><td id="p1Avg3">—</td></tr>
+        <tr><td>1 Dart</td><td id="p1Avg1">—</td></tr>
       </table>
     </div>
     <div class="stats">
       <h3>GAME AVERAGES</h3>
       <table>
-        <tr><td>3 Dart</td><td id="p2Avg3" class="value">—</td></tr>
-        <tr><td>1 Dart</td><td id="p2Avg1" class="value">—</td></tr>
+        <tr><td>3 Dart</td><td id="p2Avg3">—</td></tr>
+        <tr><td>1 Dart</td><td id="p2Avg1">—</td></tr>
       </table>
     </div>
   </div>
@@ -236,8 +233,8 @@ const Engine = {
 function renderHist(id,h){
   const ul=$(id); 
   
-  // Only render the last 15 items for performance
-  const maxDisplay = 15;
+  // Only render the last 10 items for compact display
+  const maxDisplay = 10;
   const startIdx = Math.max(0, h.length - maxDisplay);
   const itemsToShow = h.slice(startIdx);
   
