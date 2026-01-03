@@ -208,8 +208,8 @@ const Engine = {
     if(after<0||after===1){
       hist.push({type:"bust"});
       
-      // Cap history array at 25 items for performance
-      if(hist.length > 25) hist.shift();
+      // Cap history array at 15 items for performance
+      if(hist.length > 15) hist.shift();
       
       s.turn^=1;
       return;
@@ -217,8 +217,8 @@ const Engine = {
 
     hist.push({type:"turn",scored:score,to:after});
     
-    // Cap history array at 25 items for performance
-    if(hist.length > 25) hist.shift();
+    // Cap history array at 15 items for performance
+    if(hist.length > 15) hist.shift();
     
     if(isP1){
       s.p1Score=after;
@@ -234,8 +234,8 @@ const Engine = {
     if(after===0){
       hist.push({type:"finish"});
       
-      // Cap history array at 25 items for performance
-      if(hist.length > 25) hist.shift();
+      // Cap history array at 15 items for performance
+      if(hist.length > 15) hist.shift();
       
       this.winLeg(isP1?0:1);
       return;
@@ -270,8 +270,39 @@ const Engine = {
   }
 };
 
-// ========== EFFICIENT RENDER SYSTEM ==========
-// Track what was last rendered to avoid unnecessary DOM updates
+// ========== THROTTLED RENDER SYSTEM ==========
+let aiTurnPending = false;
+let renderScheduled = false;
+let lastRenderTime = 0;
+
+function scheduleRender(){
+  if(renderScheduled) return;
+  
+  const now = Date.now();
+  const timeSinceLastRender = now - lastRenderTime;
+  
+  if(timeSinceLastRender >= 150){
+    // Render immediately if enough time has passed
+    renderScheduled = true;
+    requestAnimationFrame(() => {
+      actualRender();
+      lastRenderTime = Date.now();
+      renderScheduled = false;
+    });
+  } else {
+    // Delay render
+    renderScheduled = true;
+    setTimeout(() => {
+      requestAnimationFrame(() => {
+        actualRender();
+        lastRenderTime = Date.now();
+        renderScheduled = false;
+      });
+    }, 150 - timeSinceLastRender);
+  }
+}
+
+// Track what changed
 let lastRendered = {
   p1Score: null,
   p2Score: null,
@@ -283,82 +314,7 @@ let lastRendered = {
   p2HistLen: 0
 };
 
-function renderHist(id, h){
-  // This function is now only called when history actually changed
-  const ul = $(id);
-  const isP1 = id === "p1History";
-  const lastLen = isP1 ? lastRendered.p1HistLen : lastRendered.p2HistLen;
-  
-  // If history was reset (new leg) OR capped (shifted items), rebuild
-  if(h.length <= lastLen){
-    ul.innerHTML = "";
-    
-    // Rebuild from scratch
-    const frag = document.createDocumentFragment();
-    h.forEach(e => {
-      const li = document.createElement('li');
-      if(e.type === "start"){
-        li.className = 'hist-item start';
-        li.textContent = e.score;
-      } else if(e.type === "turn"){
-        li.className = 'hist-item';
-        li.innerHTML = `<span class="scored">${e.scored}</span><span class="remain">${e.to}</span>`;
-      } else if(e.type === "bust"){
-        li.className = 'hist-item bust';
-        li.textContent = 'BUST';
-      } else if(e.type === "finish"){
-        li.className = 'hist-item finish';
-        li.textContent = 'FINISH';
-      }
-      frag.appendChild(li);
-    });
-    ul.appendChild(frag);
-    
-    // Update tracking
-    if(isP1) lastRendered.p1HistLen = h.length;
-    else lastRendered.p2HistLen = h.length;
-    
-    // Auto-scroll
-    ul.scrollTop = ul.scrollHeight;
-    return;
-  }
-  
-  // Only process new items (append only)
-  const newItems = h.slice(lastLen);
-  if(newItems.length === 0) return;
-  
-  // Use document fragment for efficient batch DOM insertion
-  const frag = document.createDocumentFragment();
-  
-  newItems.forEach(e => {
-    const li = document.createElement('li');
-    if(e.type === "start"){
-      li.className = 'hist-item start';
-      li.textContent = e.score;
-    } else if(e.type === "turn"){
-      li.className = 'hist-item';
-      li.innerHTML = `<span class="scored">${e.scored}</span><span class="remain">${e.to}</span>`;
-    } else if(e.type === "bust"){
-      li.className = 'hist-item bust';
-      li.textContent = 'BUST';
-    } else if(e.type === "finish"){
-      li.className = 'hist-item finish';
-      li.textContent = 'FINISH';
-    }
-    frag.appendChild(li);
-  });
-  
-  ul.appendChild(frag);
-  
-  // Update tracking
-  if(isP1) lastRendered.p1HistLen = h.length;
-  else lastRendered.p2HistLen = h.length;
-  
-  // Auto-scroll
-  ul.scrollTop = ul.scrollHeight;
-}
-
-function render(){
+function actualRender(){
   const s = Engine.state;
   
   // Only update if changed
@@ -394,18 +350,75 @@ function render(){
   
   // Only render history if it changed
   if(s.p1Hist.length !== lastRendered.p1HistLen){
-    renderHist("p1History", s.p1Hist);
+    renderHistQuick("p1History", s.p1Hist);
   }
   
   if(s.p2Hist.length !== lastRendered.p2HistLen){
-    renderHist("p2History", s.p2Hist);
+    renderHistQuick("p2History", s.p2Hist);
   }
   
-  // Update averages (always update these as they change frequently)
-  $("p1Avg3").textContent = s.matchP1Turns ? (s.matchP1Pts/s.matchP1Turns).toFixed(2) : "—";
-  $("p2Avg3").textContent = s.matchP2Turns ? (s.matchP2Pts/s.matchP2Turns).toFixed(2) : "—";
+  // Update averages (calculate once, reuse)
+  const p1Avg = s.matchP1Turns ? (s.matchP1Pts/s.matchP1Turns).toFixed(2) : "—";
+  const p2Avg = s.matchP2Turns ? (s.matchP2Pts/s.matchP2Turns).toFixed(2) : "—";
+  
+  $("p1Avg3").textContent = p1Avg;
+  $("p2Avg3").textContent = p2Avg;
   $("p1Avg1").textContent = s.matchP1Turns ? (s.matchP1Pts/s.matchP1Turns/3).toFixed(2) : "—";
   $("p2Avg1").textContent = s.matchP2Turns ? (s.matchP2Pts/s.matchP2Turns/3).toFixed(2) : "—";
+}
+
+// Ultra-simple history rendering - only show last 10 items
+function renderHistQuick(id, h){
+  const ul = $(id);
+  const isP1 = id === "p1History";
+  const lastLen = isP1 ? lastRendered.p1HistLen : lastRendered.p2HistLen;
+  
+  // If reset, clear
+  if(h.length < lastLen){
+    ul.textContent = ''; // Faster than innerHTML = ''
+    if(isP1) lastRendered.p1HistLen = 0;
+    else lastRendered.p2HistLen = 0;
+    return;
+  }
+  
+  // Only show last 10 items
+  const showStart = Math.max(0, h.length - 10);
+  const newStart = Math.max(showStart, lastLen);
+  
+  // If we need to rebuild (items shifted out of view)
+  if(newStart < lastLen){
+    ul.textContent = '';
+    const items = h.slice(showStart);
+    const html = items.map(e => {
+      if(e.type==="start") return `<li class="hist-item start">${e.score}</li>`;
+      if(e.type==="turn") return `<li class="hist-item"><span class="scored">${e.scored}</span><span class="remain">${e.to}</span></li>`;
+      if(e.type==="bust") return `<li class="hist-item bust">BUST</li>`;
+      if(e.type==="finish") return `<li class="hist-item finish">FINISH</li>`;
+      return '';
+    }).join('');
+    ul.innerHTML = html;
+  } else {
+    // Append new items only
+    const newItems = h.slice(lastLen);
+    const html = newItems.map(e => {
+      if(e.type==="start") return `<li class="hist-item start">${e.score}</li>`;
+      if(e.type==="turn") return `<li class="hist-item"><span class="scored">${e.scored}</span><span class="remain">${e.to}</span></li>`;
+      if(e.type==="bust") return `<li class="hist-item bust">BUST</li>`;
+      if(e.type==="finish") return `<li class="hist-item finish">FINISH</li>`;
+      return '';
+    }).join('');
+    ul.insertAdjacentHTML('beforeend', html);
+  }
+  
+  if(isP1) lastRendered.p1HistLen = h.length;
+  else lastRendered.p2HistLen = h.length;
+  
+  ul.scrollTop = ul.scrollHeight;
+}
+
+// Wrapper function that schedules instead of rendering immediately
+function render(){
+  scheduleRender();
 }
 
 function initMatch(){
@@ -550,174 +563,40 @@ function submitThrow(){
   }
 }
 
-// Debounce AI turns
-let aiTurnPending = false;
-
+// ULTRA-SIMPLIFIED AI - just return random scores quickly
 function playAITurn(){
-  if(aiTurnPending) return; // Prevent rapid-fire AI turns
+  if(aiTurnPending) return;
   aiTurnPending = true;
   
   const avg = Engine.cfg.aiAverage;
-  const checkoutPct = Engine.cfg.aiCheckout / 100;
   const remaining = Engine.state.p2Score;
   
   let score;
   
-  // Determine if AI is on a finish
-  if(remaining <= 170 && remaining !== 169 && remaining !== 168 && remaining !== 166 && 
-     remaining !== 165 && remaining !== 163 && remaining !== 162 && remaining !== 159){
-    
-    // Checkout difficulty modifier
-    let checkoutDifficulty = 1.0;
-    if(remaining <= 40) checkoutDifficulty = 1.5;
-    else if(remaining <= 100) checkoutDifficulty = 1.2;
-    else checkoutDifficulty = 0.7;
-    
-    const adjustedCheckoutChance = checkoutPct * checkoutDifficulty;
-    
-    if(Math.random() < adjustedCheckoutChance){
-      score = remaining; // Successfully finish
-    } else {
-      // Miss the checkout - use OVERALL average (not inflated)
-      score = simulateCheckoutAttempt(avg, remaining);
-    }
+  // Simple checkout check
+  if(remaining <= 170 && Math.random() < (Engine.cfg.aiCheckout / 100)){
+    score = remaining; // Hit the finish
   } else {
-    // Not on a finish - use OVERALL average directly
-    // The average already accounts for everything including poor checkouts
-    score = simulateThreeDarts(avg, remaining, false);
+    // Simple random score based on average
+    const variance = avg * 0.4; // 40% variance
+    score = Math.max(0, Math.floor(avg - variance + Math.random() * variance * 2));
+    
+    // Don't bust
+    if(score >= remaining) score = Math.max(0, remaining - Math.floor(Math.random() * 30 + 10));
+    // Don't leave 1
+    if(remaining - score === 1) score = Math.max(0, score - 1);
   }
   
   Engine.apply(score);
+  render();
   
-  // Use requestAnimationFrame for smoother rendering
-  requestAnimationFrame(() => {
-    render();
-    setTimeout(() => {
-      aiTurnPending = false; // Reset after delay
-    }, 100);
-  });
+  setTimeout(() => {
+    aiTurnPending = false;
+  }, 150);
 }
 
 // Calculate actual SCORING average from overall leg average and checkout %
 // Simulate a checkout attempt that misses
-function simulateCheckoutAttempt(average, remaining){
-  // SIMPLIFIED VERSION - prevent crashes and infinite loops
-  // Just throw 3 darts normally, being careful not to bust
-  
-  let score = 0;
-  
-  // Throw up to 3 darts
-  for(let i = 0; i < 3; i++){
-    const dart = throwSingleDart(average);
-    
-    // Check if adding this dart would bust or leave 1
-    if(score + dart >= remaining){
-      // Stop here, leave it for next turn
-      break;
-    }
-    
-    score += dart;
-    
-    // If we've left a good finish (<=170), stop
-    if(remaining - score <= 170 && remaining - score > 1){
-      break;
-    }
-  }
-  
-  // Safety checks
-  if(score >= remaining) score = Math.max(0, remaining - 10);
-  if(remaining - score === 1) score = Math.max(0, score - 1);
-  
-  return Math.max(0, Math.min(score, remaining - 2));
-}
-
-function getTrebleRate(average){
-  if(average >= 105) return 0.46;
-  else if(average >= 100) return 0.43;
-  else if(average >= 95) return 0.40;
-  else if(average >= 85) return 0.36;
-  else if(average >= 75) return 0.30;
-  else if(average >= 60) return 0.22;
-  else if(average >= 45) return 0.14;
-  else return 0.07;
-}
-
-// Simulate throwing 3 darts based on skill level
-function simulateThreeDarts(average, remaining, isCheckoutAttempt){
-  let totalScore = 0;
-  
-  // Throw 3 darts with realistic scoring distribution
-  for(let i = 0; i < 3; i++){
-    totalScore += throwSingleDart(average);
-  }
-  
-  return totalScore;
-}
-
-// Simulate a single dart throw based on average
-function throwSingleDart(average){
-  // Use average to determine scoring distribution
-  // Lower average = more misses and low scores
-  
-  if(average >= 100){
-    // Elite players: frequent trebles, rare misses
-    const rand = Math.random();
-    if(rand < 0.43) return 60; // T20
-    if(rand < 0.50) return [57, 54, 51][Math.floor(Math.random() * 3)]; // Other trebles
-    if(rand < 0.85) return [20, 19, 18][Math.floor(Math.random() * 3)]; // High singles
-    if(rand < 0.95) return [15, 16, 17][Math.floor(Math.random() * 3)]; // Mid singles
-    return [5, 1, 12, 9][Math.floor(Math.random() * 4)]; // Misses
-  }
-  
-  if(average >= 85){
-    // Professional: good trebles, occasional misses
-    const rand = Math.random();
-    if(rand < 0.36) return 60; // T20
-    if(rand < 0.42) return [57, 54, 51][Math.floor(Math.random() * 3)]; // Other trebles
-    if(rand < 0.70) return [20, 19, 18][Math.floor(Math.random() * 3)]; // High singles
-    if(rand < 0.88) return [15, 16, 17, 12, 13, 14][Math.floor(Math.random() * 6)]; // Mid singles
-    return [5, 1, 9, 11, 7, 3][Math.floor(Math.random() * 6)]; // Misses
-  }
-  
-  if(average >= 70){
-    // Solid player: some trebles, regular misses
-    const rand = Math.random();
-    if(rand < 0.30) return 60; // T20
-    if(rand < 0.35) return [57, 54, 51][Math.floor(Math.random() * 3)]; // Other trebles
-    if(rand < 0.60) return [20, 19, 18][Math.floor(Math.random() * 3)]; // High singles
-    if(rand < 0.80) return [15, 16, 17, 12, 13, 14][Math.floor(Math.random() * 6)]; // Mid singles
-    return [5, 1, 9, 11, 7, 3, 8, 10, 6][Math.floor(Math.random() * 9)]; // Misses
-  }
-  
-  if(average >= 55){
-    // Intermediate: occasional trebles, many misses
-    const rand = Math.random();
-    if(rand < 0.20) return 60; // T20 - reduced
-    if(rand < 0.24) return [57, 54][Math.floor(Math.random() * 2)]; // Other trebles - rare
-    if(rand < 0.44) return [20, 19, 18, 17][Math.floor(Math.random() * 4)]; // High singles
-    if(rand < 0.68) return [15, 16, 13, 14, 12, 11][Math.floor(Math.random() * 6)]; // Mid singles
-    return [5, 1, 9, 7, 3, 8, 10, 6, 4, 2][Math.floor(Math.random() * 10)]; // Misses
-  }
-  
-  if(average >= 40){
-    // Beginner: rare trebles, lots of low scores
-    const rand = Math.random();
-    if(rand < 0.10) return 60; // T20 - very rare
-    if(rand < 0.12) return [57, 54][Math.floor(Math.random() * 2)]; // Other trebles - extremely rare
-    if(rand < 0.26) return [20, 19, 18][Math.floor(Math.random() * 3)]; // High singles
-    if(rand < 0.50) return [15, 16, 13, 14, 12, 11, 10, 9][Math.floor(Math.random() * 8)]; // Mid singles
-    return [5, 1, 7, 3, 8, 6, 4, 2, 17, 11, 9, 12, 10][Math.floor(Math.random() * 13)]; // Low scores
-  }
-  
-  // Very low average (< 40): almost never hit trebles, mostly low scores
-  const rand = Math.random();
-  if(rand < 0.04) return 60; // T20 - almost never!
-  if(rand < 0.05) return [57, 54][Math.floor(Math.random() * 2)]; // Other trebles - nearly impossible
-  if(rand < 0.14) return [20, 19, 18][Math.floor(Math.random() * 3)]; // High singles - rare
-  if(rand < 0.34) return [15, 16, 13, 14, 12, 11, 10, 9, 8][Math.floor(Math.random() * 9)]; // Mid singles
-  return [5, 1, 7, 3, 6, 4, 2, 17, 11, 9, 12, 10, 8, 14][Math.floor(Math.random() * 14)]; // Lots of low scores - 66% of darts!
-}
-
 function undo(){
   if(Engine.state.undo.length){
     Engine.restore(Engine.state.undo.pop());
