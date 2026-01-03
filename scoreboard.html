@@ -33,61 +33,93 @@
 
   <div id="matchInfo" class="match-info"></div>
 
-  <div class="input-row">
+  <div class="score-row">
+    <div class="score-col">
+      <div id="p1Score" class="big-score">501</div>
+      <div id="p1Name" class="player-name"></div>
+    </div>
+
+    <div class="legs-display">
+      <div class="legs-grid">
+        <div class="leg-item">LEGS<span id="p1Legs">0</span></div>
+        <div class="leg-item">LEGS<span id="p2Legs">0</span></div>
+      </div>
+      <div class="sets-grid" id="setsGrid">
+        <div class="leg-item">SETS<span id="p1Sets">0</span></div>
+        <div class="leg-item">SETS<span id="p2Sets">0</span></div>
+      </div>
+    </div>
+
+    <div class="score-col">
+      <div id="p2Score" class="big-score">501</div>
+      <div id="p2Name" class="player-name-right"></div>
+    </div>
+  </div>
+
+  <div class="dotted-line"></div>
+
+  <div class="input-section">
+    <input id="throwInput" class="throw-input" type="number" min="0" max="180" placeholder="Enter score">
+  </div>
+
+  <div class="dotted-line"></div>
+
+  <div class="bottom-row">
+    <div class="side-stats">
+      <h3>GAME AVERAGES</h3>
+      <table>
+        <tr><td>3 DART</td><td id="p1Avg3">—</td></tr>
+        <tr><td>1 DART</td><td id="p1Avg1">—</td></tr>
+      </table>
+      <h3>AMOUNT</h3>
+      <table>
+        <tr><td>180'S</td><td id="p1_180s">0</td></tr>
+        <tr><td>160 - 179</td><td id="p1_160">0</td></tr>
+        <tr><td>140 - 159</td><td id="p1_140">0</td></tr>
+        <tr><td>120 - 139</td><td id="p1_120">0</td></tr>
+        <tr><td>100 - 119</td><td id="p1_100">0</td></tr>
+        <tr><td>80 - 99</td><td id="p1_80">0</td></tr>
+        <tr><td>60 - 79</td><td id="p1_60">0</td></tr>
+        <tr><td>0 - 59</td><td id="p1_0">0</td></tr>
+      </table>
+    </div>
+
+    <div class="center-history">
+      <div class="history-scores">
+        <div id="p1Score2" class="history-score">501</div>
+        <div id="p2Score2" class="history-score">501</div>
+      </div>
+      <div class="history-cols">
+        <ul id="p1History" class="history-list"></ul>
+        <ul id="p2History" class="history-list"></ul>
+      </div>
+    </div>
+
+    <div class="side-stats">
+      <h3>GAME AVERAGES</h3>
+      <table>
+        <tr><td>3 DART</td><td id="p2Avg3">—</td></tr>
+        <tr><td>1 DART</td><td id="p2Avg1">—</td></tr>
+      </table>
+      <h3>AMOUNT</h3>
+      <table>
+        <tr><td>180'S</td><td id="p2_180s">0</td></tr>
+        <tr><td>160 - 179</td><td id="p2_160">0</td></tr>
+        <tr><td>140 - 159</td><td id="p2_140">0</td></tr>
+        <tr><td>120 - 139</td><td id="p2_120">0</td></tr>
+        <tr><td>100 - 119</td><td id="p2_100">0</td></tr>
+        <tr><td>80 - 99</td><td id="p2_80">0</td></tr>
+        <tr><td>60 - 79</td><td id="p2_60">0</td></tr>
+        <tr><td>0 - 59</td><td id="p2_0">0</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="hidden-controls">
     <button class="action" onclick="undo()">⟲</button>
-    <input id="throwInput" class="throw" type="number" min="0" max="180" placeholder="Enter score">
     <button class="action" onclick="submitThrow()">➤</button>
   </div>
 
-  <div class="hint">Press Enter to submit. Undo restores the last visit.</div>
-
-  <div class="main-area">
-    <div class="player-col">
-      <div class="player-header">
-        <div id="p1Score" class="inline-score">501</div>
-      </div>
-      <div class="hist-col">
-        <ul id="p1History" class="hist-list"></ul>
-      </div>
-    </div>
-
-    <div class="center-area">
-      <div id="p1Name" class="player-name"></div>
-      <div class="center-stats">
-        <div>LEGS<span id="p1Legs">0</span></div>
-        <div>SETS<span id="p1Sets">0</span></div>
-        <div>SETS<span id="p2Sets">0</span></div>
-        <div>LEGS<span id="p2Legs">0</span></div>
-      </div>
-      <div id="p2Name" class="player-name"></div>
-    </div>
-
-    <div class="player-col">
-      <div class="player-header">
-        <div id="p2Score" class="inline-score">501</div>
-      </div>
-      <div class="hist-col">
-        <ul id="p2History" class="hist-list"></ul>
-      </div>
-    </div>
-  </div>
-
-  <div class="bottom">
-    <div class="stats">
-      <h3>GAME AVERAGES</h3>
-      <table>
-        <tr><td>3 Dart</td><td id="p1Avg3">—</td></tr>
-        <tr><td>1 Dart</td><td id="p1Avg1">—</td></tr>
-      </table>
-    </div>
-    <div class="stats">
-      <h3>GAME AVERAGES</h3>
-      <table>
-        <tr><td>3 Dart</td><td id="p2Avg3">—</td></tr>
-        <tr><td>1 Dart</td><td id="p2Avg1">—</td></tr>
-      </table>
-    </div>
-  </div>
 </div>
 
 <script>
@@ -265,11 +297,16 @@ function renderHist(id,h){
 function render(){
   const s=Engine.state;
   
-  // Update scores only if changed
+  // Update both score displays
   const p1ScoreEl = $("p1Score");
   const p2ScoreEl = $("p2Score");
+  const p1Score2El = $("p1Score2");
+  const p2Score2El = $("p2Score2");
+  
   if(p1ScoreEl.textContent !== s.p1Score.toString()) p1ScoreEl.textContent = s.p1Score;
   if(p2ScoreEl.textContent !== s.p2Score.toString()) p2ScoreEl.textContent = s.p2Score;
+  if(p1Score2El) p1Score2El.textContent = s.p1Score;
+  if(p2Score2El) p2Score2El.textContent = s.p2Score;
   
   // Update legs/sets
   $("p1Legs").textContent=s.p1Legs;
@@ -315,23 +352,18 @@ function initMatch(){
   $("p2Name").textContent=Engine.cfg.p2;
   
   // Update match info text
-  let matchText = `${START} GAME`;
+  let matchText = `${START} GAME — FIRST TO ${Engine.cfg.legs} LEGS`;
   if(Engine.cfg.sets > 1){
-    matchText += ` — FIRST TO ${Engine.cfg.sets} SETS`;
+    matchText = `${START} GAME — BEST OF ${Engine.cfg.sets} SETS`;
   }
-  matchText += ` — FIRST TO ${Engine.cfg.legs} LEGS`;
   
   $("matchInfo").textContent = matchText;
   
   // Hide SETS display if only 1 set
   if(Engine.cfg.sets === 1){
-    const centerStats = document.querySelector('.center-stats');
-    if(centerStats){
-      centerStats.classList.add('no-sets');
-      // Hide the middle two columns (SETS)
-      const setsElements = centerStats.querySelectorAll('div');
-      if(setsElements[1]) setsElements[1].style.display = 'none';
-      if(setsElements[2]) setsElements[2].style.display = 'none';
+    const setsGrid = document.getElementById('setsGrid');
+    if(setsGrid){
+      setsGrid.style.display = 'none';
     }
   }
   
