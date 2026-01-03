@@ -817,21 +817,6 @@ body{
   align-items:center;
 }
 
-.history-scores{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:60px;
-  margin-bottom:16px;
-}
-
-.history-score{
-  font-size:36px;
-  font-weight:800;
-  color:var(--text-primary);
-  text-align:center;
-  line-height:1;
-}
-
 .history-cols{
   display:grid;
   grid-template-columns:1fr 1fr;
