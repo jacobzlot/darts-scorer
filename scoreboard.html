@@ -59,7 +59,9 @@
   <div class="dotted-line"></div>
 
   <div class="input-section">
+    <button class="action" onclick="undo()">⟲</button>
     <input id="throwInput" class="throw-input" type="number" min="0" max="180" placeholder="Enter score">
+    <button class="action" onclick="submitThrow()">➤</button>
   </div>
 
   <div class="dotted-line"></div>
@@ -109,11 +111,6 @@
         <tr><td>0 - 59</td><td id="p2_0">0</td></tr>
       </table>
     </div>
-  </div>
-
-  <div class="hidden-controls">
-    <button class="action" onclick="undo()">⟲</button>
-    <button class="action" onclick="submitThrow()">➤</button>
   </div>
 
 </div>
